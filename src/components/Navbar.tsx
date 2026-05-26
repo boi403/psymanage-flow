@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border h-[70px] flex items-center justify-between px-[5%]">
@@ -28,12 +31,12 @@ const Navbar = () => {
       </div>
 
       <div className="flex items-center gap-2.5">
-        <a href="#" className="hidden md:inline-flex items-center px-5 py-2 border-[1.5px] border-primary text-primary bg-transparent rounded-lg font-semibold text-sm hover:bg-primary-light transition-all no-underline">
-          Entrar
-        </a>
-        <a href="#" className="inline-flex items-center gap-1.5 px-5 py-2 gradient-primary text-primary-foreground rounded-lg font-bold text-sm hover:-translate-y-0.5 hover:shadow-brand-lg transition-all no-underline">
+        <Link to={user ? "/dashboard" : "/auth"} className="hidden md:inline-flex items-center px-5 py-2 border-[1.5px] border-primary text-primary bg-transparent rounded-lg font-semibold text-sm hover:bg-primary-light transition-all no-underline">
+          {user ? "Painel" : "Entrar"}
+        </Link>
+        <Link to="/auth" className="inline-flex items-center gap-1.5 px-5 py-2 gradient-primary text-primary-foreground rounded-lg font-bold text-sm hover:-translate-y-0.5 hover:shadow-brand-lg transition-all no-underline">
           Começar grátis →
-        </a>
+        </Link>
         <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
