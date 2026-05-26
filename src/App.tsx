@@ -7,8 +7,16 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import DashboardLayout from "./components/dashboard/DashboardLayout";
+import Painel from "./pages/dashboard/Painel";
+import Clientes from "./pages/dashboard/Clientes";
+import Agenda from "./pages/dashboard/Agenda";
+import Financeiro from "./pages/dashboard/Financeiro";
+import Relatorios from "./pages/dashboard/Relatorios";
+import Marketing from "./pages/dashboard/Marketing";
+import Configuracao from "./pages/dashboard/Configuracao";
+import MinhaClinica from "./pages/dashboard/MinhaClinica";
 
 const queryClient = new QueryClient();
 
@@ -22,7 +30,16 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+              <Route index element={<Painel />} />
+              <Route path="clientes" element={<Clientes />} />
+              <Route path="agenda" element={<Agenda />} />
+              <Route path="financeiro" element={<Financeiro />} />
+              <Route path="relatorios" element={<Relatorios />} />
+              <Route path="marketing" element={<Marketing />} />
+              <Route path="configuracao" element={<Configuracao />} />
+              <Route path="clinica" element={<MinhaClinica />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
