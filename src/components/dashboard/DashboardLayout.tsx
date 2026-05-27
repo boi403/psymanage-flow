@@ -4,6 +4,7 @@ import { AppSidebar } from "./AppSidebar";
 import { Bell, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import PsicoIAWidget from "./PsicoIAWidget";
 
 export default function DashboardLayout() {
   const { user } = useAuth();
