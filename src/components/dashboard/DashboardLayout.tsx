@@ -4,6 +4,7 @@ import { AppSidebar } from "./AppSidebar";
 import { Bell, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import PsicoIAWidget from "./PsicoIAWidget";
 
 export default function DashboardLayout() {
   const { user } = useAuth();
@@ -33,6 +34,7 @@ export default function DashboardLayout() {
           <main className="flex-1 p-6 md:p-8 overflow-x-hidden">
             <Outlet />
           </main>
+          <PsicoIAWidget />
         </div>
       </div>
     </SidebarProvider>
