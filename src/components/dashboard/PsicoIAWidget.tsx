@@ -55,7 +55,7 @@ export default function PsicoIAWidget() {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          messages: [...messages, userMsg].filter((m) => !(m as any).__streaming).map(({ role, content }) => ({ role, content })),
+          messages: [...messages, userMsg].map(({ role, content }) => ({ role, content })),
         }),
       });
 
