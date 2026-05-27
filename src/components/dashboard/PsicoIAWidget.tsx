@@ -35,17 +35,15 @@ export default function PsicoIAWidget() {
     setLoading(true);
 
     let acc = "";
+    let started = false;
     const upsert = (chunk: string) => {
       acc += chunk;
       setMessages((p) => {
-        const last = p[p.length - 1];
-        if (last?.role === "assistant" && last.content === "__streaming__" + (acc.length - chunk.length)) {
-          return p;
+        if (!started) {
+          started = true;
+          return [...p, { role: "assistant", content: acc }];
         }
-        if (last?.role === "assistant" && last.__streaming) {
-          return p.map((m, i) => (i === p.length - 1 ? { ...m, content: acc } : m));
-        }
-        return [...p, { role: "assistant", content: acc, __streaming: true } as any];
+        return p.map((m, i) => (i === p.length - 1 ? { ...m, content: acc } : m));
       });
     };
 
