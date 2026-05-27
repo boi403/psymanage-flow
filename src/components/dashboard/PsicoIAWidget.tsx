@@ -101,7 +101,7 @@ export default function PsicoIAWidget() {
         }
       }
 
-      setMessages((p) => p.map((m) => ({ role: m.role, content: m.content })));
+      
     } catch (e) {
       console.error(e);
       toast({ title: "Erro", description: "Não foi possível falar com a Psico IA agora." });
