@@ -34,6 +34,7 @@ export default function DashboardLayout() {
           <main className="flex-1 p-6 md:p-8 overflow-x-hidden">
             <Outlet />
           </main>
+          <PsicoIAWidget />
         </div>
       </div>
     </SidebarProvider>
