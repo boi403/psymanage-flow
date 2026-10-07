@@ -1,66 +1,145 @@
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Video, MapPin, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { brl, dateTimeBR } from "@/lib/format";
 
-const hours = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
-const days = ["Seg 26", "Ter 27", "Qua 28", "Qui 29", "Sex 30"];
-
-const events: Record<string, { d: number; h: string; n: string; c: string }[]> = {
-  list: [
-    { d: 0, h: "09:00", n: "Maria Silva", c: "bg-primary-light border-l-4 border-primary text-primary-dark" },
-    { d: 0, h: "14:00", n: "Ana Costa", c: "bg-blue-50 border-l-4 border-blue-500 text-blue-700" },
-    { d: 1, h: "10:00", n: "João Pereira", c: "bg-orange-50 border-l-4 border-orange-500 text-orange-700" },
-    { d: 2, h: "11:00", n: "Carlos M.", c: "bg-primary-light border-l-4 border-primary text-primary-dark" },
-    { d: 2, h: "15:00", n: "Lucas A.", c: "bg-purple-50 border-l-4 border-purple-500 text-purple-700" },
-    { d: 3, h: "09:00", n: "Beatriz S.", c: "bg-primary-light border-l-4 border-primary text-primary-dark" },
-    { d: 3, h: "16:00", n: "Maria Silva", c: "bg-primary-light border-l-4 border-primary text-primary-dark" },
-    { d: 4, h: "10:00", n: "Ana Costa", c: "bg-blue-50 border-l-4 border-blue-500 text-blue-700" },
-    { d: 4, h: "14:00", n: "João P.", c: "bg-orange-50 border-l-4 border-orange-500 text-orange-700" },
-  ],
-};
+const STATUS = ["Agendada", "Realizada", "Cancelada", "Falta"];
 
 export default function Agenda() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ patient_id: "", starts_at: "", duration_min: "50", modality: "online", price: "" });
+
+  const { data: patients = [] } = useQuery({
+    queryKey: ["patients"],
+    queryFn: async () => (await supabase.from("patients").select("*").order("name")).data ?? [],
+  });
+  const { data: sessions = [] } = useQuery({
+    queryKey: ["sessions"],
+    queryFn: async () => (await supabase.from("sessions").select("*, patients(name)").order("starts_at")).data ?? [],
+  });
+
+  const create = useMutation({
+    mutationFn: async () => {
+      const p = patients.find((x) => x.id === form.patient_id);
+      const { error } = await supabase.from("sessions").insert({
+        patient_id: form.patient_id, starts_at: new Date(form.starts_at).toISOString(),
+        duration_min: Number(form.duration_min), modality: form.modality,
+        price: form.price ? Number(form.price) : Number(p?.session_price ?? 0),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sessions"] }); setOpen(false); toast.success("Sessão agendada"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const setStatus = useMutation({
+    mutationFn: async ({ s, status }: { s: any; status: string }) => {
+      const { error } = await supabase.from("sessions").update({ status }).eq("id", s.id);
+      if (error) throw error;
+      if (status === "Realizada") {
+        const { data: exists } = await supabase.from("transactions").select("id").eq("session_id", s.id).maybeSingle();
+        if (!exists) await supabase.from("transactions").insert({
+          type: "receita", description: `Sessão — ${s.patients?.name ?? ""}`, amount: s.price,
+          due_date: s.starts_at.slice(0, 10), status: "Pendente", patient_id: s.patient_id, session_id: s.id, category: "Sessão",
+        });
+      }
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["sessions"] }); qc.invalidateQueries({ queryKey: ["transactions"] });
+      if (v.status === "Realizada") toast.success("Sessão realizada — cobrança lançada no financeiro");
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => { await supabase.from("sessions").delete().eq("id", id); },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sessions"] }),
+  });
+
+  const now = Date.now();
+  const upcoming = sessions.filter((s) => new Date(s.starts_at).getTime() >= now - 3600_000);
+  const past = sessions.filter((s) => new Date(s.starts_at).getTime() < now - 3600_000).reverse();
+
+  const Row = ({ s }: { s: any }) => (
+    <div className="flex items-center gap-4 p-4 border-b border-border last:border-0 flex-wrap">
+      <div className="min-w-[130px]">
+        <p className="text-sm font-bold text-foreground">{dateTimeBR(s.starts_at)}</p>
+        <p className="text-xs text-muted-foreground">{s.duration_min} min · {brl(s.price)}</p>
+      </div>
+      <div className="flex-1 min-w-[140px]">
+        <p className="font-semibold text-foreground">{s.patients?.name}</p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          {s.modality === "online" ? <><Video className="w-3 h-3" /> Online</> : <><MapPin className="w-3 h-3" /> Presencial</>}
+        </p>
+      </div>
+      <Select value={s.status} onValueChange={(status) => setStatus.mutate({ s, status })}>
+        <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
+        <SelectContent>{STATUS.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
+      </Select>
+      {s.modality === "online" && (
+        <Button asChild size="sm" className="gradient-primary text-primary-foreground">
+          <Link to={`/dashboard/sala/${s.id}`}><Video className="w-4 h-4 mr-1" /> Entrar na sala</Link>
+        </Button>
+      )}
+      <Button size="icon" variant="ghost" onClick={() => confirm("Excluir sessão?") && remove.mutate(s.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Agenda</h1>
-          <p className="text-muted-foreground text-sm mt-1">Semana de 26 a 30 de maio, 2026</p>
+          <p className="text-muted-foreground text-sm mt-1">Sessões, salas virtuais e confirmações.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon"><ChevronLeft className="w-4 h-4" /></Button>
-          <Button variant="outline">Hoje</Button>
-          <Button variant="outline" size="icon"><ChevronRight className="w-4 h-4" /></Button>
-          <Button className="gradient-primary text-primary-foreground"><Plus className="w-4 h-4 mr-2" /> Nova sessão</Button>
-        </div>
+        <Button onClick={() => setOpen(true)} disabled={!patients.length} className="gradient-primary text-primary-foreground"><Plus className="w-4 h-4 mr-2" /> Nova sessão</Button>
       </div>
+      {!patients.length && <p className="text-sm text-muted-foreground">Cadastre um paciente primeiro para agendar sessões.</p>}
 
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="grid grid-cols-[80px_repeat(5,1fr)] border-b border-border bg-muted/30">
-          <div className="p-3"></div>
-          {days.map((d) => (
-            <div key={d} className="p-3 text-center text-xs font-bold text-foreground uppercase border-l border-border">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-[80px_repeat(5,1fr)]">
-          {hours.map((h) => (
-            <div key={h} className="contents">
-              <div className="p-2 text-xs text-muted-foreground font-medium border-b border-border text-right pr-3">{h}</div>
-              {days.map((_, di) => {
-                const ev = events.list.find(e => e.d === di && e.h === h);
-                return (
-                  <div key={di} className="border-l border-b border-border min-h-[60px] p-1 hover:bg-muted/20 transition-colors">
-                    {ev && (
-                      <div className={`rounded-md px-2 py-1.5 text-xs font-semibold ${ev.c}`}>
-                        {ev.n}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
+      <div className="bg-card border border-border rounded-2xl">
+        <h2 className="font-bold p-4 border-b border-border text-foreground">Próximas sessões ({upcoming.length})</h2>
+        {upcoming.length ? upcoming.map((s) => <Row key={s.id} s={s} />) : <p className="p-6 text-sm text-muted-foreground">Nenhuma sessão agendada.</p>}
       </div>
+      {past.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl">
+          <h2 className="font-bold p-4 border-b border-border text-foreground">Histórico</h2>
+          {past.map((s) => <Row key={s.id} s={s} />)}
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Nova sessão</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Paciente</Label>
+              <Select value={form.patient_id} onValueChange={(v) => setForm({ ...form, patient_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{patients.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Data e hora</Label><Input type="datetime-local" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Duração (min)</Label><Input type="number" value={form.duration_min} onChange={(e) => setForm({ ...form, duration_min: e.target.value })} /></div>
+              <div><Label>Valor (vazio = padrão)</Label><Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+            </div>
+            <div><Label>Modalidade</Label>
+              <Select value={form.modality} onValueChange={(v) => setForm({ ...form, modality: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="online">Online (sala virtual)</SelectItem><SelectItem value="presencial">Presencial</SelectItem></SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter><Button disabled={!form.patient_id || !form.starts_at || create.isPending} onClick={() => create.mutate()} className="gradient-primary text-primary-foreground">Agendar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
