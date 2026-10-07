@@ -14,11 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      patient_records: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          patient_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          patient_id: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          patient_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          approach: string | null
+          birth_date: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          session_price: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approach?: string | null
+          birth_date?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          session_price?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          approach?: string | null
+          birth_date?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          session_price?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           crp: string | null
+          email: string | null
           full_name: string | null
           id: string
           phone: string | null
@@ -29,6 +110,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           crp?: string | null
+          email?: string | null
           full_name?: string | null
           id: string
           phone?: string | null
@@ -39,6 +121,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           crp?: string | null
+          email?: string | null
           full_name?: string | null
           id?: string
           phone?: string | null
@@ -47,15 +130,179 @@ export type Database = {
         }
         Relationships: []
       }
+      sessions: {
+        Row: {
+          created_at: string
+          duration_min: number
+          id: string
+          modality: string
+          patient_id: string
+          price: number
+          room_code: string
+          starts_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_min?: number
+          id?: string
+          modality?: string
+          patient_id: string
+          price?: number
+          room_code?: string
+          starts_at: string
+          status?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          duration_min?: number
+          id?: string
+          modality?: string
+          patient_id?: string
+          price?: number
+          room_code?: string
+          starts_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          billing_cycle: string
+          created_at: string
+          id: string
+          plan: string
+          price: number
+          started_at: string
+          status: string
+          trial_ends_at: string | null
+          user_id: string
+        }
+        Insert: {
+          billing_cycle?: string
+          created_at?: string
+          id?: string
+          plan: string
+          price?: number
+          started_at?: string
+          status?: string
+          trial_ends_at?: string | null
+          user_id?: string
+        }
+        Update: {
+          billing_cycle?: string
+          created_at?: string
+          id?: string
+          plan?: string
+          price?: number
+          started_at?: string
+          status?: string
+          trial_ends_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          description: string
+          due_date: string
+          id: string
+          patient_id: string | null
+          session_id: string | null
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          description: string
+          due_date?: string
+          id?: string
+          patient_id?: string | null
+          session_id?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string
+          id?: string
+          patient_id?: string | null
+          session_id?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -182,6 +429,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
