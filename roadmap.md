@@ -1,4 +1,5 @@
 # Requested functionality
+- [ ] Session audio/video uploads, AI Gateway structured clinical reports and PDF/CSV exports (current request).
 - [ ] Complete patient chart, structured sequential records and PDF.
 - [ ] Transactional financial settlement, undo, edits and fiscal locks.
 - [ ] Immutable psychological documents, local PDF and duplication.
