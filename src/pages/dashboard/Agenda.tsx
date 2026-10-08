@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Video, MapPin, Trash2 } from "lucide-react";
+import { Plus, Video, MapPin, Trash2, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,13 +10,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { brl, dateTimeBR } from "@/lib/format";
+import { AvailabilityPanel } from "@/components/dashboard/AvailabilityPanel";
+import { useAuth } from "@/hooks/useAuth";
 
 const STATUS = ["Agendada", "Realizada", "Cancelada", "Falta"];
 
+function waLink(s: any, proName: string) {
+  let phone = (s.patients?.phone ?? "").replace(/\D/g, "");
+  if (phone.length <= 11) phone = "55" + phone;
+  const hora = new Date(s.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const msg = `Olá, ${s.patients?.name?.split(" ")[0] ?? ""}! Lembrete: daqui a 1 hora (às ${hora}) você tem consulta com ${proName}.${s.modality === "online" ? " A sessão será online." : ""}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+}
+
 export default function Agenda() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ patient_id: "", starts_at: "", duration_min: "50", modality: "online", price: "" });
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id], enabled: !!user,
+    queryFn: async () => (await supabase.from("profiles").select("full_name").eq("id", user!.id).maybeSingle()).data,
+  });
+  const proName = profile?.full_name ? `Dr(a). ${profile.full_name}` : "seu(sua) psicólogo(a)";
 
   const { data: patients = [] } = useQuery({
     queryKey: ["patients"],
@@ -24,7 +41,7 @@ export default function Agenda() {
   });
   const { data: sessions = [] } = useQuery({
     queryKey: ["sessions"],
-    queryFn: async () => (await supabase.from("sessions").select("*, patients(name)").order("starts_at")).data ?? [],
+    queryFn: async () => (await supabase.from("sessions").select("*, patients(name, phone)").order("starts_at")).data ?? [],
   });
 
   const create = useMutation({
@@ -84,11 +101,14 @@ export default function Agenda() {
         <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
         <SelectContent>{STATUS.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
       </Select>
-      {s.modality === "online" && (
-        <Button asChild size="sm" className="gradient-primary text-primary-foreground">
-          <Link to={`/dashboard/sala/${s.id}`}><Video className="w-4 h-4 mr-1" /> Entrar na sala</Link>
+      {s.status === "Agendada" && s.patients?.phone && (
+        <Button asChild size="sm" variant="outline" title="Lembrete WhatsApp">
+          <a target="_blank" rel="noreferrer" href={waLink(s, proName)}><MessageCircle className="w-4 h-4 mr-1" /> Lembrete</a>
         </Button>
       )}
+      <Button asChild size="sm" className="gradient-primary text-primary-foreground">
+        <Link to={`/dashboard/sala/${s.id}`}><Video className="w-4 h-4 mr-1" /> {s.modality === "online" ? "Entrar na sala" : "Gravar sessão"}</Link>
+      </Button>
       <Button size="icon" variant="ghost" onClick={() => confirm("Excluir sessão?") && remove.mutate(s.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
     </div>
   );
@@ -103,6 +123,9 @@ export default function Agenda() {
         <Button onClick={() => setOpen(true)} disabled={!patients.length} className="gradient-primary text-primary-foreground"><Plus className="w-4 h-4 mr-2" /> Nova sessão</Button>
       </div>
       {!patients.length && <p className="text-sm text-muted-foreground">Cadastre um paciente primeiro para agendar sessões.</p>}
+
+      <AvailabilityPanel />
+
 
       <div className="bg-card border border-border rounded-2xl">
         <h2 className="font-bold p-4 border-b border-border text-foreground">Próximas sessões ({upcoming.length})</h2>
