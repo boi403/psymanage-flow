@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,8 @@ import { Loader2 } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const [invite, setInvite] = useState(params.get("convite") ?? "");
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -48,8 +50,8 @@ const Auth = () => {
       email: signupEmail,
       password: signupPassword,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-        data: { full_name: name, crp, specialty, phone },
+        emailRedirectTo: `${window.location.origin}/auth`,
+        data: { full_name: name, crp, specialty, phone, invite_code: invite.trim() },
       },
     });
     setLoading(false);
@@ -59,7 +61,7 @@ const Auth = () => {
 
   const handleGoogle = async () => {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/dashboard` });
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/auth` });
     if (result.error) { setLoading(false); return toast.error("Erro ao entrar com Google."); }
     if (result.redirected) return;
     navigate("/dashboard");
@@ -98,6 +100,7 @@ const Auth = () => {
 
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2"><Label htmlFor="invite">Convite (opcional)</Label><Input id="invite" value={invite} onChange={e => setInvite(e.target.value)} /></div>
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome completo</Label>
                   <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Dr. Maria Silva" />
