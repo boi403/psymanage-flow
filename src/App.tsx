@@ -17,6 +17,8 @@ import Relatorios from "./pages/dashboard/Relatorios";
 import Marketing from "./pages/dashboard/Marketing";
 import Configuracao from "./pages/dashboard/Configuracao";
 import MinhaClinica from "./pages/dashboard/MinhaClinica";
+import Agendar from "./pages/Agendar";
+import SalaVirtual from "./pages/dashboard/SalaVirtual";
 
 const queryClient = new QueryClient();
 
@@ -30,10 +32,12 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/agendar/:userId" element={<Agendar />} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route index element={<Painel />} />
               <Route path="clientes" element={<Clientes />} />
               <Route path="agenda" element={<Agenda />} />
+              <Route path="sala/:id" element={<SalaVirtual />} />
               <Route path="financeiro" element={<Financeiro />} />
               <Route path="relatorios" element={<Relatorios />} />
               <Route path="marketing" element={<Marketing />} />
