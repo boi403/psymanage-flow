@@ -36,6 +36,13 @@
       "when": 1791496831622,
       "tag": "0004_invites_telegram_bot_owner_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791497118938,
+      "tag": "0005_guard_session_recording_ownership",
+      "breakpoints": true
     }
   ]
 }
