@@ -9,12 +9,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { brl, dateTimeBR } from "@/lib/format";
+import { brl } from "@/lib/format";
 import type { Tables } from "@/integrations/supabase/types";
 
+import { PatientChart } from "@/components/dashboard/PatientChart";
+import { Checkbox } from "@/components/ui/checkbox";
+import { isValidCPF } from "@/lib/receita";
+
 type Patient = Tables<"patients">;
-const STATUSES = ["Ativo", "Novo", "Pendente", "Lista de espera", "Alta", "Inativo", "Desistente"];
-const empty = { name: "", email: "", phone: "", cpf: "", birth_date: "", approach: "", status: "Ativo", session_price: "0", notes: "" };
+const STATUSES = ["Ativo", "Pausa", "Alta", "Inativo"];
+const empty = { name: "", email: "", phone: "", cpf: "", birth_date: "", approach: "", status: "Ativo", session_price: "0", notes: "", modality: "Online", billing_mode: "por sessão", due_day: "10", payer_cpf: "", receipt_opt_in: true };
 
 export default function Clientes() {
   const qc = useQueryClient();
@@ -35,7 +39,9 @@ export default function Clientes() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { ...form, session_price: Number(form.session_price || 0), birth_date: form.birth_date || null };
+      if (form.cpf && !isValidCPF(form.cpf)) throw new Error("CPF do beneficiário inválido");
+      if (form.payer_cpf && !isValidCPF(form.payer_cpf)) throw new Error("CPF do pagador inválido");
+      const payload = { ...form, due_day: Number(form.due_day), session_price: Number(form.session_price || 0), birth_date: form.birth_date || null };
       const { error } = editing
         ? await supabase.from("patients").update(payload).eq("id", editing.id)
         : await supabase.from("patients").insert(payload);
@@ -53,13 +59,13 @@ export default function Clientes() {
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (p: Patient) => {
     setEditing(p);
-    setForm({ name: p.name, email: p.email ?? "", phone: p.phone ?? "", cpf: p.cpf ?? "", birth_date: p.birth_date ?? "", approach: p.approach ?? "", status: p.status, session_price: String(p.session_price), notes: p.notes ?? "" });
+    setForm({ name: p.name, email: p.email ?? "", phone: p.phone ?? "", cpf: p.cpf ?? "", birth_date: p.birth_date ?? "", approach: p.approach ?? "", status: p.status, session_price: String(p.session_price), notes: p.notes ?? "", modality: p.modality, billing_mode: p.billing_mode, due_day: String(p.due_day), payer_cpf: p.payer_cpf ?? "", receipt_opt_in: p.receipt_opt_in });
     setOpen(true);
   };
 
   const filtered = patients.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()) || (p.email ?? "").toLowerCase().includes(search.toLowerCase()));
   const count = (s: string) => patients.filter((p) => p.status === s).length;
-  const f = (k: keyof typeof empty) => ({ value: form[k], onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value }) });
+  const f = (k: Exclude<keyof typeof empty, "receipt_opt_in">) => ({ value: form[k], onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value }) });
 
   return (
     <div className="space-y-6">
@@ -72,7 +78,7 @@ export default function Clientes() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[{ l: "Total", v: patients.length }, { l: "Ativos", v: count("Ativo") }, { l: "Pendentes", v: count("Pendente") }, { l: "Novos", v: count("Novo") }].map((k) => (
+        {[{ l: "Total", v: patients.length }, { l: "Ativos", v: count("Ativo") }, { l: "Em pausa", v: count("Pausa") }, { l: "Alta", v: count("Alta") }].map((k) => (
           <div key={k.l} className="bg-card border border-border rounded-2xl p-4">
             <p className="text-xs text-muted-foreground font-medium">{k.l}</p>
             <p className="text-2xl font-bold mt-1 text-foreground">{k.v}</p>
@@ -136,13 +142,13 @@ export default function Clientes() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar paciente" : "Novo paciente"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><Label>Nome *</Label><Input {...f("name")} /></div>
             <div><Label>E-mail</Label><Input {...f("email")} /></div>
             <div><Label>Telefone</Label><Input {...f("phone")} /></div>
-            <div><Label>CPF</Label><Input {...f("cpf")} /></div>
+            <div><Label>CPF do beneficiário</Label><Input {...f("cpf")} /></div>
             <div><Label>Nascimento</Label><Input type="date" {...f("birth_date")} /></div>
             <div><Label>Abordagem</Label><Input {...f("approach")} placeholder="TCC, Psicanálise..." /></div>
             <div><Label>Valor da sessão (R$)</Label><Input type="number" {...f("session_price")} /></div>
@@ -152,6 +158,10 @@ export default function Clientes() {
                 <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div><Label>CPF do pagador</Label><Input {...f("payer_cpf")} /></div>
+            <div><Label>Dia de vencimento</Label><Input type="number" min={1} max={31} {...f("due_day")} /></div>
+            {[{k:"modality" as const,l:"Modalidade",o:["Online","Presencial","Híbrido"]},{k:"billing_mode" as const,l:"Forma de cobrança",o:["por sessão","mensal","pacote"]}].map(x=><div key={x.k}><Label>{x.l}</Label><Select value={form[x.k]} onValueChange={v=>setForm({...form,[x.k]:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{x.o.map(v=><SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></div>)}
+            <label className="col-span-2 flex items-center gap-2 text-sm"><Checkbox checked={form.receipt_opt_in} onCheckedChange={v=>setForm({...form,receipt_opt_in:v===true})}/> Opt-in de recibo Receita Saúde</label>
             <div className="col-span-2"><Label>Observações</Label><Textarea {...f("notes")} /></div>
           </div>
           <DialogFooter>
@@ -160,43 +170,7 @@ export default function Clientes() {
         </DialogContent>
       </Dialog>
 
-      <RecordsDialog patient={recordPatient} onClose={() => setRecordPatient(null)} />
+      {recordPatient && <PatientChart key={recordPatient.id} patient={recordPatient} onClose={() => setRecordPatient(null)} onEdit={() => { openEdit(recordPatient); setRecordPatient(null); }} />}
     </div>
-  );
-}
-
-function RecordsDialog({ patient, onClose }: { patient: Patient | null; onClose: () => void }) {
-  const qc = useQueryClient();
-  const [text, setText] = useState("");
-  const { data: records = [] } = useQuery({
-    queryKey: ["records", patient?.id],
-    enabled: !!patient,
-    queryFn: async () => {
-      const { data } = await supabase.from("patient_records").select("*").eq("patient_id", patient!.id).order("created_at", { ascending: false });
-      return data ?? [];
-    },
-  });
-  const add = useMutation({
-    mutationFn: async () => { const { error } = await supabase.from("patient_records").insert({ patient_id: patient!.id, content: text }); if (error) throw error; },
-    onSuccess: () => { setText(""); qc.invalidateQueries({ queryKey: ["records", patient?.id] }); toast.success("Evolução registrada"); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  return (
-    <Dialog open={!!patient} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>Prontuário — {patient?.name}</DialogTitle></DialogHeader>
-        <Textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="Registrar evolução da sessão..." />
-        <Button disabled={!text || add.isPending} onClick={() => add.mutate()} className="gradient-primary text-primary-foreground self-end">Adicionar registro</Button>
-        <div className="max-h-80 overflow-y-auto space-y-3">
-          {records.length === 0 && <p className="text-sm text-muted-foreground">Nenhum registro ainda.</p>}
-          {records.map((r) => (
-            <div key={r.id} className="p-3 rounded-lg bg-muted/40 border border-border">
-              <p className="text-xs text-muted-foreground mb-1">{dateTimeBR(r.created_at)}</p>
-              <p className="text-sm whitespace-pre-wrap text-foreground">{r.content}</p>
-            </div>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
