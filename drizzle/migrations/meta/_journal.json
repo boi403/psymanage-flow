@@ -22,6 +22,13 @@
       "when": 1791496509620,
       "tag": "0002_clinical_charts_financial_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791496735601,
+      "tag": "0003_patient_registration_validation",
+      "breakpoints": true
     }
   ]
 }
