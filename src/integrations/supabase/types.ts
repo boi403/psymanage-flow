@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      availability_slots: {
+        Row: {
+          booked: boolean
+          created_at: string
+          duration_min: number
+          id: string
+          modality: string
+          session_id: string | null
+          starts_at: string
+          user_id: string
+        }
+        Insert: {
+          booked?: boolean
+          created_at?: string
+          duration_min?: number
+          id?: string
+          modality?: string
+          session_id?: string | null
+          starts_at: string
+          user_id?: string
+        }
+        Update: {
+          booked?: boolean
+          created_at?: string
+          duration_min?: number
+          id?: string
+          modality?: string
+          session_id?: string | null
+          starts_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_records: {
         Row: {
           content: string
@@ -56,7 +89,9 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          payer_cpf: string | null
           phone: string | null
+          receipt_opt_in: boolean
           session_price: number
           status: string
           updated_at: string
@@ -71,7 +106,9 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          payer_cpf?: string | null
           phone?: string | null
+          receipt_opt_in?: boolean
           session_price?: number
           status?: string
           updated_at?: string
@@ -86,7 +123,9 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          payer_cpf?: string | null
           phone?: string | null
+          receipt_opt_in?: boolean
           session_price?: number
           status?: string
           updated_at?: string
@@ -129,6 +168,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      session_recordings: {
+        Row: {
+          audio_path: string
+          created_at: string
+          id: string
+          kind: string
+          media_path: string | null
+          report: Json | null
+          session_id: string
+          status: string
+          transcript: string | null
+          user_id: string
+        }
+        Insert: {
+          audio_path: string
+          created_at?: string
+          id?: string
+          kind?: string
+          media_path?: string | null
+          report?: Json | null
+          session_id: string
+          status?: string
+          transcript?: string | null
+          user_id?: string
+        }
+        Update: {
+          audio_path?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          media_path?: string | null
+          report?: Json | null
+          session_id?: string
+          status?: string
+          transcript?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_recordings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sessions: {
         Row: {
@@ -222,6 +308,7 @@ export type Database = {
           due_date: string
           id: string
           patient_id: string | null
+          receipt_issued: boolean
           session_id: string | null
           status: string
           type: string
@@ -235,6 +322,7 @@ export type Database = {
           due_date?: string
           id?: string
           patient_id?: string | null
+          receipt_issued?: boolean
           session_id?: string | null
           status?: string
           type?: string
@@ -248,6 +336,7 @@ export type Database = {
           due_date?: string
           id?: string
           patient_id?: string | null
+          receipt_issued?: boolean
           session_id?: string | null
           status?: string
           type?: string
@@ -293,12 +382,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      book_slot: {
+        Args: {
+          _email: string
+          _name: string
+          _phone: string
+          _slot_id: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      public_professional: {
+        Args: { _user_id: string }
+        Returns: {
+          crp: string
+          full_name: string
+          specialty: string
+        }[]
       }
     }
     Enums: {

@@ -8,6 +8,13 @@
       "when": 1791411619361,
       "tag": "0000_core_app",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791495917318,
+      "tag": "0001_booking_recordings_receita",
+      "breakpoints": true
     }
   ]
 }
