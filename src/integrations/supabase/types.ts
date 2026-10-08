@@ -47,26 +47,89 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string
+          token_hash: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      financial_audit: {
+        Row: {
+          after_snapshot: Json | null
+          before_snapshot: Json | null
+          created_at: string
+          id: string
+          operation: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          after_snapshot?: Json | null
+          before_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          operation: string
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          after_snapshot?: Json | null
+          before_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          operation?: string
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_records: {
         Row: {
+          approved: boolean
+          clinical_sections: Json
           content: string
           created_at: string
           id: string
           patient_id: string
+          sequence_no: number | null
           user_id: string
         }
         Insert: {
+          approved?: boolean
+          clinical_sections?: Json
           content: string
           created_at?: string
           id?: string
           patient_id: string
+          sequence_no?: number | null
           user_id?: string
         }
         Update: {
+          approved?: boolean
+          clinical_sections?: Json
           content?: string
           created_at?: string
           id?: string
           patient_id?: string
+          sequence_no?: number | null
           user_id?: string
         }
         Relationships: [
@@ -82,11 +145,14 @@ export type Database = {
       patients: {
         Row: {
           approach: string | null
+          billing_mode: string
           birth_date: string | null
           cpf: string | null
           created_at: string
+          due_day: number
           email: string | null
           id: string
+          modality: string
           name: string
           notes: string | null
           payer_cpf: string | null
@@ -94,16 +160,20 @@ export type Database = {
           receipt_opt_in: boolean
           session_price: number
           status: string
+          telegram_chat_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           approach?: string | null
+          billing_mode?: string
           birth_date?: string | null
           cpf?: string | null
           created_at?: string
+          due_day?: number
           email?: string | null
           id?: string
+          modality?: string
           name: string
           notes?: string | null
           payer_cpf?: string | null
@@ -111,16 +181,20 @@ export type Database = {
           receipt_opt_in?: boolean
           session_price?: number
           status?: string
+          telegram_chat_id?: string | null
           updated_at?: string
           user_id?: string
         }
         Update: {
           approach?: string | null
+          billing_mode?: string
           birth_date?: string | null
           cpf?: string | null
           created_at?: string
+          due_day?: number
           email?: string | null
           id?: string
+          modality?: string
           name?: string
           notes?: string | null
           payer_cpf?: string | null
@@ -128,6 +202,7 @@ export type Database = {
           receipt_opt_in?: boolean
           session_price?: number
           status?: string
+          telegram_chat_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -135,39 +210,105 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approach_templates: Json
           avatar_url: string | null
+          city: string | null
           created_at: string
           crp: string | null
+          default_session_price: number
           email: string | null
           full_name: string | null
           id: string
           phone: string | null
+          professional_cpf: string | null
           specialty: string | null
           updated_at: string
         }
         Insert: {
+          approach_templates?: Json
           avatar_url?: string | null
+          city?: string | null
           created_at?: string
           crp?: string | null
+          default_session_price?: number
           email?: string | null
           full_name?: string | null
           id: string
           phone?: string | null
+          professional_cpf?: string | null
           specialty?: string | null
           updated_at?: string
         }
         Update: {
+          approach_templates?: Json
           avatar_url?: string | null
+          city?: string | null
           created_at?: string
           crp?: string | null
+          default_session_price?: number
           email?: string | null
           full_name?: string | null
           id?: string
           phone?: string | null
+          professional_cpf?: string | null
           specialty?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      psychological_documents: {
+        Row: {
+          content: string
+          created_at: string
+          finalized_at: string | null
+          id: string
+          kind: string
+          patient_id: string
+          source_id: string | null
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          kind?: string
+          patient_id: string
+          source_id?: string | null
+          status?: string
+          title: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          kind?: string
+          patient_id?: string
+          source_id?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psychological_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "psychological_documents_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "psychological_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_recordings: {
         Row: {
@@ -263,6 +404,36 @@ export type Database = {
           },
         ]
       }
+      signup_invites: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          email: string | null
+          expires_at: string
+          id: string
+          used_by: string | null
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          used_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          used_by?: string | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           billing_cycle: string
@@ -299,6 +470,44 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_links: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          patient_id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          patient_id: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          patient_id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_links_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -307,12 +516,14 @@ export type Database = {
           description: string
           due_date: string
           id: string
+          paid_at: string | null
           patient_id: string | null
           receipt_issued: boolean
           session_id: string | null
           status: string
           type: string
           user_id: string
+          version: number
         }
         Insert: {
           amount: number
@@ -321,12 +532,14 @@ export type Database = {
           description: string
           due_date?: string
           id?: string
+          paid_at?: string | null
           patient_id?: string | null
           receipt_issued?: boolean
           session_id?: string | null
           status?: string
           type?: string
           user_id?: string
+          version?: number
         }
         Update: {
           amount?: number
@@ -335,12 +548,14 @@ export type Database = {
           description?: string
           due_date?: string
           id?: string
+          paid_at?: string | null
           patient_id?: string | null
           receipt_issued?: boolean
           session_id?: string | null
           status?: string
           type?: string
           user_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -391,6 +606,19 @@ export type Database = {
         }
         Returns: string
       }
+      bot_operation: {
+        Args: {
+          _action: string
+          _amount?: number
+          _chat?: string
+          _code?: string
+          _content?: string
+          _count?: number
+          _owner: string
+          _patient?: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -405,6 +633,10 @@ export type Database = {
           full_name: string
           specialty: string
         }[]
+      }
+      settle_transactions: {
+        Args: { _ids: string[]; _paid: boolean }
+        Returns: number
       }
     }
     Enums: {

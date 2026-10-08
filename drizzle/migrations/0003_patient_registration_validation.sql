@@ -1,0 +1,3 @@
+ALTER TABLE public.profiles ADD COLUMN professional_cpf text;
+CREATE FUNCTION public.guard_patient_registration() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$ BEGIN IF NEW.due_day<1 OR NEW.due_day>31 THEN RAISE EXCEPTION 'Vencimento deve ser entre 1 e 31'; END IF; IF NEW.session_price<0 THEN RAISE EXCEPTION 'Valor não pode ser negativo'; END IF; IF NEW.modality NOT IN ('Online','Presencial','Híbrido') OR NEW.billing_mode NOT IN ('por sessão','mensal','pacote') THEN RAISE EXCEPTION 'Modalidade ou cobrança inválida'; END IF; RETURN NEW; END $$;
+CREATE TRIGGER patient_registration_guard BEFORE INSERT OR UPDATE ON public.patients FOR EACH ROW EXECUTE FUNCTION public.guard_patient_registration();

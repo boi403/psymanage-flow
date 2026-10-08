@@ -31,12 +31,12 @@ export function rowIssues(r: ReceitaRow): string[] {
   return issues;
 }
 
-/** Carnê-Leão Web import layout: Data;Código;Valor;Histórico;CPF pagador;CPF beneficiário */
+/** Official income import, 13 fields. Receipt generation adds 3 fields. */
 export function buildCarneLeaoCSV(rows: ReceitaRow[]): string {
   const lines = rows.map((r) => {
     const [y, m, d] = r.date.split("-");
-    const hist = r.description.replace(/[;\r\n]/g, " ").slice(0, 200);
-    return [`${d}/${m}/${y}`, "R01.001.001", r.amount.toFixed(2).replace(".", ","), hist, onlyDigits(r.payerCpf), onlyDigits(r.beneficiaryCpf)].join(";");
+    const hist = r.description.replace(/[;\r\n]/g, " ").slice(0, 255);
+    return [`${d}/${m}/${y}`, "R01.001.001", "255", r.amount.toFixed(2).replace(".", ","), "", hist, "PF", onlyDigits(r.payerCpf), onlyDigits(r.beneficiaryCpf), "", "", "N", ""].join(";");
   });
   return lines.join("\r\n") + "\r\n";
 }

@@ -13,7 +13,7 @@ describe("Receita Saúde", () => {
   });
   it("builds Carnê-Leão line", () => {
     const csv = buildCarneLeaoCSV([{ id: "1", date: "2026-10-01", amount: 200.5, description: "Sessão", payerCpf: "529.982.247-25", beneficiaryCpf: "52998224725" }]);
-    expect(csv).toBe("01/10/2026;R01.001.001;200,50;Sessão;52998224725;52998224725\r\n");
+    expect(csv).toBe("01/10/2026;R01.001.001;255;200,50;;Sessão;PF;52998224725;52998224725;;;N;\r\n");
   });
   it("encodes ISO-8859-1", () => {
     expect(Array.from(encodeLatin1("ã"))).toEqual([0xe3]);

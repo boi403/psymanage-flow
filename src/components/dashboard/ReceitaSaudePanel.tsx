@@ -1,0 +1,18 @@
+import { useState } from 'react';
+import { useQuery,useMutation,useQueryClient } from '@tanstack/react-query';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select,SelectTrigger,SelectValue,SelectContent,SelectItem } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { rowIssues,buildCarneLeaoCSV,encodeLatin1 } from '@/lib/receita';
+import { brl } from '@/lib/format';
+import { toast } from 'sonner';
+export function ReceitaSaudePanel(){
+ const qc=useQueryClient();const [encoding,setEncoding]=useState('UTF-8');
+ const {data:rows=[]}=useQuery({queryKey:['receita-saude'],queryFn:async()=>{const {data,error}=await supabase.from('transactions').select('*, patients(name,cpf,payer_cpf,receipt_opt_in)').eq('type','receita').eq('status','Pago').order('paid_at');if(error)throw error;return (data??[]).filter(t=>t.patients?.receipt_opt_in);}});
+ const receipt=useMutation({mutationFn:async({id,issued}:{id:string;issued:boolean})=>{const {error}=await supabase.from('transactions').update({receipt_issued:issued}).eq('id',id);if(error)throw error;},onSuccess:()=>{qc.invalidateQueries({queryKey:['receita-saude']});qc.invalidateQueries({queryKey:['transactions']});},onError:(e:Error)=>toast.error(e.message)});
+  const mapped=rows.map(t=>({id:t.id,date:(t.paid_at??'').slice(0,10),amount:t.amount,description:t.description,payerCpf:t.patients?.payer_cpf||t.patients?.cpf||null,beneficiaryCpf:t.patients?.cpf||null}));
+ const valid=mapped.filter(r=>!rowIssues(r).length);
+ function download(){const text=buildCarneLeaoCSV(valid);const bytes=encoding==='UTF-8'?new TextEncoder().encode(text):encodeLatin1(text);const url=URL.createObjectURL(new Blob([bytes as BlobPart],{type:`text/csv;charset=${encoding}`}));const a=document.createElement('a');a.href=url;a.download='carne-leao-rendimentos.csv';a.click();URL.revokeObjectURL(url);}
+ return <section className="space-y-4 border-t border-border pt-6"><div className="flex justify-between items-center gap-3 flex-wrap"><h2 className="text-lg font-bold">Receita Saúde</h2><div className="flex gap-2"><Select value={encoding} onValueChange={setEncoding}><SelectTrigger className="w-40"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="UTF-8">UTF-8</SelectItem><SelectItem value="ISO-8859-1">ISO-8859-1</SelectItem></SelectContent></Select><Button variant="outline" disabled={!valid.length} onClick={download}>CSV Carnê-Leão</Button></div></div><p className="text-sm text-muted-foreground">Rendimentos recebidos · Recibos emitidos no Receita Saúde</p><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left border-b border-border"><th className="py-3">Paciente / data de recebimento</th><th>Valor</th><th>Pendências</th><th>Recibo emitido</th></tr></thead><tbody>{rows.map((t,i)=><tr key={t.id} className="border-b border-border"><td className="py-3">{t.patients?.name}<p className="text-xs text-muted-foreground">{t.paid_at||'Data ausente'}</p></td><td>{brl(t.amount)}</td><td className="text-xs text-muted-foreground">{rowIssues(mapped[i]).join(' · ')||'Sem pendências'}</td><td><Checkbox aria-label={`Recibo emitido ${t.patients?.name}`} checked={t.receipt_issued} disabled={receipt.isPending} onCheckedChange={v=>{if(confirm(v?'Confirmar que este recibo já foi emitido no Receita Saúde?':'Desmarcar o recibo fiscal emitido?'))receipt.mutate({id:t.id,issued:v===true});}}/></td></tr>)}</tbody></table></div>{!rows.length&&<p className="text-sm text-muted-foreground">Nenhuma receita recebida com opt-in de recibo.</p>}</section>;
+}

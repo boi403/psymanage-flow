@@ -1,73 +1,20 @@
-import { Plus, Edit, Lock, Users, FileText, Calendar, Wallet, Bell, Link as LinkIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-const sections = [
-  { t: "Usuários", icon: Users, items: ["Profissionais", "Colaboradores", "Permissões"] },
-  { t: "Modelos", icon: FileText, items: ["Documentos", "Formulário de sessão", "Anamnese", "Recursos terapêuticos"] },
-  { t: "Agenda", icon: Calendar, items: ["Agenda e salas"] },
-  { t: "Finanças", icon: Wallet, items: ["Pacotes", "Convênios e repasses", "Forma de pagamento", "Categorias financeiras", "Cobranças"] },
-  { t: "Notificações", icon: Bell, items: ["Para clientes", "Para o profissional"] },
-  { t: "Integrações", icon: LinkIcon, items: ["Assinatura Digital", "Receita Saúde"] },
-];
-
-export default function Configuracao() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
-        <p className="text-muted-foreground text-sm mt-1">Personalize o sistema conforme sua clínica</p>
-      </div>
-
-      <div className="bg-card border border-border rounded-2xl">
-        <div className="p-5 border-b border-border flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-foreground">Profissionais</h3>
-            <p className="text-xs text-muted-foreground">Usuários que atendem na sua clínica</p>
-          </div>
-          <Button className="gradient-primary text-primary-foreground"><Plus className="w-4 h-4 mr-2" /> Adicionar profissional</Button>
-        </div>
-        <div className="divide-y divide-border">
-          {[
-            { n: "MATEUS OLIVEIRA REZENDE", e: "mateus.orezende@gmail.com" },
-            { n: "Dra. Carla Mendes", e: "carla@clinica.com" },
-          ].map((p, i) => (
-            <div key={i} className="p-4 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-                {p.n.split(" ").map(x => x[0]).join("").slice(0, 2)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{p.n}</p>
-                <p className="text-xs text-muted-foreground truncate">{p.e}</p>
-              </div>
-              <span className="hidden md:inline-flex w-2 h-2 rounded-full bg-green-500" />
-              <Button variant="ghost" size="icon"><Edit className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="icon"><Lock className="w-4 h-4" /></Button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        {sections.map((s) => (
-          <div key={s.t} className="bg-card border border-border rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-primary-light flex items-center justify-center">
-                <s.icon className="w-4 h-4 text-primary-dark" />
-              </div>
-              <h3 className="font-bold text-foreground">{s.t}</h3>
-            </div>
-            <ul className="space-y-1.5">
-              {s.items.map((it) => (
-                <li key={it}>
-                  <button className="w-full text-left text-sm text-muted-foreground hover:text-primary hover:bg-muted/30 px-2 py-1.5 rounded transition-colors">
-                    {it}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+import { useState,useEffect } from 'react';
+import { useQuery,useMutation,useQueryClient } from '@tanstack/react-query';
+import { Save,Plus,Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import { ReceitaSaudePanel } from '@/components/dashboard/ReceitaSaudePanel';
+import { CLINICAL_FIELDS,FIELD_LABELS } from '@/lib/clinical';
+export default function Configuracao(){
+ const {user}=useAuth();const qc=useQueryClient();
+ const [form,setForm]=useState({full_name:'',crp:'',city:'',phone:'',default_session_price:'0'});const [templates,setTemplates]=useState<Record<string,Record<string,string>>>({});const [newApproach,setNewApproach]=useState('');
+ const {data:profile,isLoading}=useQuery({queryKey:['settings',user?.id],enabled:!!user,queryFn:async()=>{if(!user)return null;const {data,error}=await supabase.from('profiles').select('*').eq('id',user.id).single();if(error)throw error;return data;}});
+ useEffect(()=>{if(profile){setForm({full_name:profile.full_name??'',crp:profile.crp??'',city:profile.city??'',phone:profile.phone??'',default_session_price:String(profile.default_session_price)});setTemplates((profile.approach_templates??{}) as Record<string,Record<string,string>>);}},[profile]);
+ const save=useMutation({mutationFn:async()=>{if(!user)throw new Error('Entre na sua conta');const {error}=await supabase.from('profiles').update({...form,default_session_price:Number(form.default_session_price),approach_templates:templates}).eq('id',user.id);if(error)throw error;},onSuccess:()=>{qc.invalidateQueries({queryKey:['settings']});qc.invalidateQueries({queryKey:['clinical-settings']});toast.success('Configurações salvas');},onError:(e:Error)=>toast.error(e.message)});
+ return <div className="space-y-6"><div className="flex justify-between gap-4 items-center"><h1 className="text-2xl font-bold">Configurações</h1><Button disabled={save.isPending||isLoading} onClick={()=>save.mutate()}><Save className="w-4 h-4 mr-2"/>Salvar</Button></div><section className="space-y-4"><h2 className="font-bold text-lg">Dados do profissional</h2><div className="grid md:grid-cols-2 gap-4">{([{key:'full_name',label:'Nome'},{key:'crp',label:'CRP'},{key:'city',label:'Cidade'},{key:'phone',label:'Contato'},{key:'default_session_price',label:'Valor padrão da sessão (R$)'}] as const).map(f=><div key={f.key}><Label>{f.label}</Label><Input type={f.key==='default_session_price'?'number':'text'} min={0} value={form[f.key]} onChange={e=>setForm({...form,[f.key]:e.target.value})}/></div>)}</div></section><section className="border-t border-border pt-6 space-y-4"><h2 className="font-bold text-lg">Abordagens terapêuticas</h2><div className="flex gap-2"><Input placeholder="TCC, Psicologia Positiva, Logoterapia..." value={newApproach} onChange={e=>setNewApproach(e.target.value)}/><Button disabled={!newApproach.trim()} variant="outline" onClick={()=>{setTemplates({...templates,[newApproach.trim()]:{}});setNewApproach('');}}><Plus className="w-4 h-4 mr-1"/>Adicionar</Button></div>{Object.entries(templates).map(([name,fields])=><details key={name} className="border-b border-border pb-4"><summary className="font-semibold cursor-pointer">{name}</summary><div className="grid md:grid-cols-2 gap-3 mt-3">{CLINICAL_FIELDS.map(k=><div key={k}><Label>{FIELD_LABELS[k]}</Label><Textarea rows={2} value={fields[k]??''} onChange={e=>setTemplates({...templates,[name]:{...fields,[k]:e.target.value}})}/></div>)}</div><Button variant="ghost" size="sm" onClick={()=>{const next={...templates};delete next[name];setTemplates(next);}}><Trash2 className="w-4 h-4 mr-1"/>Remover abordagem</Button></details>)}</section><ReceitaSaudePanel/></div>;
 }
