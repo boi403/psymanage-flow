@@ -29,6 +29,13 @@
       "when": 1791496735601,
       "tag": "0003_patient_registration_validation",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791496831622,
+      "tag": "0004_invites_telegram_bot_owner_scope",
+      "breakpoints": true
     }
   ]
 }
