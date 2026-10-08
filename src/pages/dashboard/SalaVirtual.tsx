@@ -5,12 +5,19 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { dateTimeBR } from "@/lib/format";
+import SessionRecordings from "@/components/dashboard/SessionRecordings";
 
 export default function SalaVirtual() {
   const { id } = useParams();
   const { data: s } = useQuery({
     queryKey: ["session", id],
-    queryFn: async () => (await supabase.from("sessions").select("*, patients(name)").eq("id", id!).maybeSingle()).data,
+    enabled: !!id,
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase.from("sessions").select("*, patients(name)").eq("id", id).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
   });
   if (!s) return <p className="text-muted-foreground">Carregando sala...</p>;
   const room = `PsicoManager-${s.room_code}`;
@@ -33,6 +40,7 @@ export default function SalaVirtual() {
       <div className="rounded-2xl overflow-hidden border border-border bg-card" style={{ height: "75vh" }}>
         <iframe title="Sala virtual" src={url} allow="camera; microphone; fullscreen; display-capture; autoplay" className="w-full h-full border-0" />
       </div>
+      <SessionRecordings sessionId={s.id} sessionDate={s.starts_at} />
     </div>
   );
 }
