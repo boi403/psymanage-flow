@@ -15,6 +15,13 @@
       "when": 1791495917318,
       "tag": "0001_booking_recordings_receita",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791496509620,
+      "tag": "0002_clinical_charts_financial_audit",
+      "breakpoints": true
     }
   ]
 }

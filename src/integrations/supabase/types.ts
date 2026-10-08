@@ -47,26 +47,65 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_audit: {
+        Row: {
+          after_snapshot: Json | null
+          before_snapshot: Json | null
+          created_at: string
+          id: string
+          operation: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          after_snapshot?: Json | null
+          before_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          operation: string
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          after_snapshot?: Json | null
+          before_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          operation?: string
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_records: {
         Row: {
+          approved: boolean
+          clinical_sections: Json
           content: string
           created_at: string
           id: string
           patient_id: string
+          sequence_no: number | null
           user_id: string
         }
         Insert: {
+          approved?: boolean
+          clinical_sections?: Json
           content: string
           created_at?: string
           id?: string
           patient_id: string
+          sequence_no?: number | null
           user_id?: string
         }
         Update: {
+          approved?: boolean
+          clinical_sections?: Json
           content?: string
           created_at?: string
           id?: string
           patient_id?: string
+          sequence_no?: number | null
           user_id?: string
         }
         Relationships: [
@@ -82,11 +121,14 @@ export type Database = {
       patients: {
         Row: {
           approach: string | null
+          billing_mode: string
           birth_date: string | null
           cpf: string | null
           created_at: string
+          due_day: number
           email: string | null
           id: string
+          modality: string
           name: string
           notes: string | null
           payer_cpf: string | null
@@ -99,11 +141,14 @@ export type Database = {
         }
         Insert: {
           approach?: string | null
+          billing_mode?: string
           birth_date?: string | null
           cpf?: string | null
           created_at?: string
+          due_day?: number
           email?: string | null
           id?: string
+          modality?: string
           name: string
           notes?: string | null
           payer_cpf?: string | null
@@ -116,11 +161,14 @@ export type Database = {
         }
         Update: {
           approach?: string | null
+          billing_mode?: string
           birth_date?: string | null
           cpf?: string | null
           created_at?: string
+          due_day?: number
           email?: string | null
           id?: string
+          modality?: string
           name?: string
           notes?: string | null
           payer_cpf?: string | null
@@ -135,9 +183,12 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approach_templates: Json
           avatar_url: string | null
+          city: string | null
           created_at: string
           crp: string | null
+          default_session_price: number
           email: string | null
           full_name: string | null
           id: string
@@ -146,9 +197,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approach_templates?: Json
           avatar_url?: string | null
+          city?: string | null
           created_at?: string
           crp?: string | null
+          default_session_price?: number
           email?: string | null
           full_name?: string | null
           id: string
@@ -157,9 +211,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approach_templates?: Json
           avatar_url?: string | null
+          city?: string | null
           created_at?: string
           crp?: string | null
+          default_session_price?: number
           email?: string | null
           full_name?: string | null
           id?: string
@@ -168,6 +225,60 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      psychological_documents: {
+        Row: {
+          content: string
+          created_at: string
+          finalized_at: string | null
+          id: string
+          kind: string
+          patient_id: string
+          source_id: string | null
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          kind?: string
+          patient_id: string
+          source_id?: string | null
+          status?: string
+          title: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          kind?: string
+          patient_id?: string
+          source_id?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psychological_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "psychological_documents_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "psychological_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_recordings: {
         Row: {
@@ -307,12 +418,14 @@ export type Database = {
           description: string
           due_date: string
           id: string
+          paid_at: string | null
           patient_id: string | null
           receipt_issued: boolean
           session_id: string | null
           status: string
           type: string
           user_id: string
+          version: number
         }
         Insert: {
           amount: number
@@ -321,12 +434,14 @@ export type Database = {
           description: string
           due_date?: string
           id?: string
+          paid_at?: string | null
           patient_id?: string | null
           receipt_issued?: boolean
           session_id?: string | null
           status?: string
           type?: string
           user_id?: string
+          version?: number
         }
         Update: {
           amount?: number
@@ -335,12 +450,14 @@ export type Database = {
           description?: string
           due_date?: string
           id?: string
+          paid_at?: string | null
           patient_id?: string | null
           receipt_issued?: boolean
           session_id?: string | null
           status?: string
           type?: string
           user_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -405,6 +522,10 @@ export type Database = {
           full_name: string
           specialty: string
         }[]
+      }
+      settle_transactions: {
+        Args: { _ids: string[]; _paid: boolean }
+        Returns: number
       }
     }
     Enums: {
