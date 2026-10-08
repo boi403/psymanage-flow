@@ -1,0 +1,10 @@
+# Requested functionality
+- [ ] Complete patient chart, structured sequential records and PDF.
+- [ ] Transactional financial settlement, undo, edits and fiscal locks.
+- [ ] Immutable psychological documents, local PDF and duplication.
+- [ ] Professional settings and configurable approaches.
+- [ ] Receita Saúde verified layout and manual receipt controls.
+- [ ] Invite registration enforcement, 15-minute Telegram link and external bot.
+- [ ] AI drafts with server-side anonymization of approved evolutions.
+- [ ] Finish earlier recording/report and booking views.
+- [ ] Automated WhatsApp reminder (requires provider connection).
