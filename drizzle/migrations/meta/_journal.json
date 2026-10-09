@@ -43,6 +43,13 @@
       "when": 1791497118938,
       "tag": "0005_guard_session_recording_ownership",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791506563847,
+      "tag": "0006_secure_online_booking",
+      "breakpoints": true
     }
   ]
 }

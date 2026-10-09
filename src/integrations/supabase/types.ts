@@ -626,6 +626,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      public_available_slots: {
+        Args: { _user_id: string }
+        Returns: {
+          duration_min: number
+          id: string
+          modality: string
+          starts_at: string
+        }[]
+      }
       public_professional: {
         Args: { _user_id: string }
         Returns: {
