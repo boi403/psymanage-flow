@@ -9,4 +9,4 @@
 - [ ] AI drafts with server-side anonymization of approved evolutions.
 - [ ] Finish earlier recording/report and booking views.
 - [ ] Automated WhatsApp reminder one hour before consultations, with professional name and scheduled time (blocked on individual WhatsApp provider setup).
-- [ ] Evaluate WA-AKG for each psychologist to connect their own WhatsApp account.
+- [x] Evaluate WA-AKG for each psychologist to connect their own WhatsApp account: unofficial QR protocol, requires external persistent hosting; awaiting user choice before integration.
