@@ -8,5 +8,5 @@
 - [ ] Invite registration enforcement, 15-minute Telegram link and external bot.
 - [ ] AI drafts with server-side anonymization of approved evolutions.
 - [ ] Finish earlier recording/report and booking views.
-- [ ] Automated WhatsApp reminder one hour before consultations, with professional name and scheduled time (blocked on individual WhatsApp provider setup).
-- [x] Evaluate WA-AKG for each psychologist to connect their own WhatsApp account: unofficial QR protocol, requires external persistent hosting; awaiting user choice before integration.
+- [ ] Automated WhatsApp reminder one hour before consultations, with professional name and scheduled time (blocked on a hosted WA-AKG service).
+- [x] Evaluate WA-AKG for each psychologist to connect their own WhatsApp account: user chose unofficial QR pairing; requires external persistent hosting.
