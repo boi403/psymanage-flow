@@ -1,4 +1,5 @@
 # Requested functionality
+- [ ] Complete online booking: professional opens slots, shares a public link, patient chooses and confirms; validate availability and concurrent bookings.
 - [ ] Session audio/video uploads, AI Gateway structured clinical reports and PDF/CSV exports (current request).
 - [ ] Complete patient chart, structured sequential records and PDF.
 - [ ] Transactional financial settlement, undo, edits and fiscal locks.
