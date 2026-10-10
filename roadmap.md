@@ -1,4 +1,9 @@
 # Requested functionality
+- [ ] Mobile agenda: list/week calendar and appointment dots; rescheduling and session notes/audio access.
+- [ ] Real-data overview panel and working appointment links.
+- [ ] Private session notes and AI reports based on notes.
+- [ ] Individual Google Calendar synchronization from PsicoManager (blocked on workspace OAuth client setup).
+- [ ] Review security of touched booking/report flows; DDoS immunity cannot be guaranteed.
 - [ ] Complete online booking: professional opens slots, shares a public link, patient chooses and confirms; validate availability and concurrent bookings.
 - [ ] Session audio/video uploads, AI Gateway structured clinical reports and PDF/CSV exports (current request).
 - [ ] Complete patient chart, structured sequential records and PDF.
