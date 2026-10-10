@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_user_connections: {
+        Row: {
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at: string
+          id: string
+          reconnect_required: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at?: string
+          id?: string
+          reconnect_required?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connection_key_ciphertext?: string
+          connector_id?: string
+          created_at?: string
+          id?: string
+          reconnect_required?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       availability_slots: {
         Row: {
           booked: boolean
@@ -68,6 +98,60 @@ export type Database = {
           label?: string
           token_hash?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      calendar_sync_jobs: {
+        Row: {
+          cancelled: boolean
+          duration_min: number
+          id: string
+          last_error: string | null
+          session_id: string
+          starts_at: string
+          synced_version: number
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          cancelled?: boolean
+          duration_min: number
+          id?: string
+          last_error?: string | null
+          session_id: string
+          starts_at: string
+          synced_version?: number
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          cancelled?: boolean
+          duration_min?: number
+          id?: string
+          last_error?: string | null
+          session_id?: string
+          starts_at?: string
+          synced_version?: number
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      calendar_worker_secret: {
+        Row: {
+          id: number
+          secret: string
+        }
+        Insert: {
+          id?: number
+          secret?: string
+        }
+        Update: {
+          id?: number
+          secret?: string
         }
         Relationships: []
       }
@@ -363,6 +447,9 @@ export type Database = {
           duration_min: number
           id: string
           modality: string
+          notes: string
+          notes_report: Json | null
+          notes_report_source: string | null
           patient_id: string
           price: number
           room_code: string
@@ -375,6 +462,9 @@ export type Database = {
           duration_min?: number
           id?: string
           modality?: string
+          notes?: string
+          notes_report?: Json | null
+          notes_report_source?: string | null
           patient_id: string
           price?: number
           room_code?: string
@@ -387,6 +477,9 @@ export type Database = {
           duration_min?: number
           id?: string
           modality?: string
+          notes?: string
+          notes_report?: Json | null
+          notes_report_source?: string | null
           patient_id?: string
           price?: number
           room_code?: string
