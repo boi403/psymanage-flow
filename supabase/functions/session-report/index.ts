@@ -30,9 +30,13 @@ Deno.serve(async req => {
     const auth = req.headers.get('Authorization'); if (!auth) return json({ error: 'Não autenticado' }, 401);
     const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } });
     const { data: { user } } = await db.auth.getUser(auth.replace(/^Bearer /, '')); if (!user) return json({ error: 'Não autenticado' }, 401);
-    const parsed = z.object({ recording_id: z.string().uuid() }).safeParse(await req.json().catch(() => null));
+    const parsed = z.union([z.object({ recording_id: z.string().uuid() }).strict(), z.object({ session_id: z.string().uuid(), source: z.literal('notes') }).strict()]).safeParse(await req.json().catch(() => null));
     if (!parsed.success) return json({ error: 'Identificação da gravação inválida' }, 400);
-    const { data: rec } = await db.from('session_recordings').select('*').eq('id', parsed.data.recording_id).eq('user_id', user.id).maybeSingle();
+    const notesMode = 'session_id' in parsed.data;
+    const { data: noteSession } = notesMode ? await db.from('sessions').select('*').eq('id', parsed.data.session_id).eq('user_id', user.id).maybeSingle() : { data: null };
+    if (notesMode && (!noteSession || !noteSession.notes.trim())) return json({ error: 'Salve as anotações antes de gerar o relatório' }, 400);
+    const { data: recording } = 'recording_id' in parsed.data ? await db.from('session_recordings').select('*').eq('id', parsed.data.recording_id).eq('user_id', user.id).maybeSingle() : { data: null };
+    const rec = notesMode && noteSession ? { id: noteSession.id, session_id: noteSession.id, audio_path: `${user.id}/notes`, kind: 'audio', transcript: noteSession.notes, report: noteSession.notes_report_source === noteSession.notes ? noteSession.notes_report : null } : recording;
     if (!rec) return json({ error: 'Gravação não encontrada' }, 404);
     if (rec.report && reportSchema.safeParse(rec.report).success) return new Response(JSON.stringify({ report: rec.report }) + '\n', { headers: { ...corsHeaders, 'Content-Type': 'application/x-ndjson' } });
     const { data: session } = await db.from('sessions').select('patient_id').eq('id', rec.session_id).eq('user_id', user.id).maybeSingle();
@@ -85,7 +89,7 @@ Deno.serve(async req => {
         });
         if (!completed || !output) throw new Error('Relatório interrompido ou vazio.');
         const report = reportSchema.parse(JSON.parse(output));
-        const { error } = await db.from('session_recordings').update({ report, status: 'relatorio' }).eq('id', rec.id); if (error) throw error;
+        const { error } = notesMode ? await db.from('sessions').update({ notes_report: report, notes_report_source: rec.transcript }).eq('id', rec.id).eq('user_id', user.id).eq('notes', rec.transcript) : await db.from('session_recordings').update({ report, status: 'relatorio' }).eq('id', rec.id); if (error) throw error;
         send({ report });
       } catch (error) { send({ error: req.signal.aborted ? 'Processamento cancelado.' : error instanceof Error ? error.message : 'Falha no processamento.' }); }
       finally { controller.close(); }
