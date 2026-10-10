@@ -142,14 +142,17 @@ export type Database = {
       }
       calendar_worker_secret: {
         Row: {
+          endpoint: string | null
           id: number
           secret: string
         }
         Insert: {
+          endpoint?: string | null
           id?: number
           secret?: string
         }
         Update: {
+          endpoint?: string | null
           id?: number
           secret?: string
         }

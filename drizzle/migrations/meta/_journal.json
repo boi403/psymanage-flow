@@ -57,6 +57,13 @@
       "when": 1791672769762,
       "tag": "0007_session_notes_calendar_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791672827029,
+      "tag": "0008_calendar_sync_on_changes",
+      "breakpoints": true
     }
   ]
 }
