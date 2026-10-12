@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { brl, dateTimeBR } from "@/lib/format";
 import { AvailabilityPanel } from "@/components/dashboard/AvailabilityPanel";
 import { useAuth } from "@/hooks/useAuth";
+import { GoogleCalendarCard } from "@/components/dashboard/GoogleCalendarCard";
+import { AgendaCalendar } from "@/components/dashboard/AgendaCalendar";
 
 const STATUS = ["Agendada", "Realizada", "Cancelada", "Falta"];
 
@@ -124,6 +126,8 @@ export default function Agenda() {
       </div>
       {!patients.length && <p className="text-sm text-muted-foreground">Cadastre um paciente primeiro para agendar sessões.</p>}
 
+      <GoogleCalendarCard />
+      <AgendaCalendar sessions={sessions as any} />
       <AvailabilityPanel />
 
 
