@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { brl, dateTimeBR } from "@/lib/format";
 import { AvailabilityPanel } from "@/components/dashboard/AvailabilityPanel";
 import { useAuth } from "@/hooks/useAuth";
+import { GoogleCalendarCard, calendarAction } from "@/components/dashboard/GoogleCalendarCard";
+import { AgendaCalendar } from "@/components/dashboard/AgendaCalendar";
 
 const STATUS = ["Agendada", "Realizada", "Cancelada", "Falta"];
 
@@ -54,7 +56,7 @@ export default function Agenda() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sessions"] }); setOpen(false); toast.success("Sessão agendada"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sessions"] }); setOpen(false); toast.success("Sessão agendada"); syncCal(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -71,16 +73,17 @@ export default function Agenda() {
       }
     },
     onSuccess: (_d, v) => {
-      qc.invalidateQueries({ queryKey: ["sessions"] }); qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["sessions"] }); qc.invalidateQueries({ queryKey: ["transactions"] }); syncCal();
       if (v.status === "Realizada") toast.success("Sessão realizada — cobrança lançada no financeiro");
     },
   });
 
   const remove = useMutation({
     mutationFn: async (id: string) => { await supabase.from("sessions").delete().eq("id", id); },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sessions"] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sessions"] }); syncCal(); },
   });
 
+  const syncCal = () => calendarAction({ action: "sync" }).catch(() => {});
   const now = Date.now();
   const upcoming = sessions.filter((s) => new Date(s.starts_at).getTime() >= now - 3600_000);
   const past = sessions.filter((s) => new Date(s.starts_at).getTime() < now - 3600_000).reverse();
@@ -124,6 +127,8 @@ export default function Agenda() {
       </div>
       {!patients.length && <p className="text-sm text-muted-foreground">Cadastre um paciente primeiro para agendar sessões.</p>}
 
+      <GoogleCalendarCard />
+      <AgendaCalendar sessions={sessions as any} />
       <AvailabilityPanel />
 
 
