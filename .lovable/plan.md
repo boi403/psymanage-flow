@@ -1,25 +1,26 @@
-# Gravações de sessão → transcrição → relatório clínico com IA
-
-A base já existe na Sala Virtual (envio de áudio/vídeo até 24 MB, transcrição, relatório em 7 seções, exportação PDF/CSV). Este plano conclui, ativa e valida o recurso de ponta a ponta.
+# Agenda com calendário e conexão direta ao Google Agenda
 
 ## O que o psicólogo verá
-1. Na Sala Virtual de cada sessão: confirmar consentimento, enviar gravação (áudio ou vídeo).
-2. Botão "Gerar relatório": mostra o progresso ("Transcrevendo…", "Gerando relatório…").
-3. Relatório rascunho com Resumo, Demanda, Relato, Observações clínicas, Intervenções, Evolução e Plano, mais a transcrição.
-4. Novo: editar e salvar o rascunho revisado, e marcar "Revisado pelo profissional" antes de exportar.
-5. Exportar PDF ou CSV (o rótulo "rascunho IA" some após a revisão).
-6. Acesso também pela ficha do paciente (lista de sessões com gravações).
+1. Na Agenda: um calendário mensal/semanal com pontos nos dias que têm consultas (cores por status: confirmada, pendente, cancelada).
+2. Ao tocar num dia: lista das consultas daquele dia (horário, paciente, modalidade), com acesso à Sala Virtual.
+3. Alternância "Semana / Mês", funcionando bem no celular.
+4. Botão "Conectar Google Agenda": abre a autorização da própria conta Google do profissional e volta ao app já conectado.
+5. Depois de conectado: consultas confirmadas criam eventos no Google Agenda, remarcações atualizam e cancelamentos removem. Botões "Sincronizar agora" e "Desconectar".
+6. Os eventos no Google mostram só "Consulta PsicoManager" e o horário, nunca conteúdo clínico, e ficam privados.
 
 ## Etapas
-1. Publicar a função de relatório atualizada no backend.
-2. Edição/revisão do relatório: campos editáveis, salvar, marcar como revisado (data e autor registrados).
-3. Mensagens claras para falta de créditos de IA, arquivo grande demais ou sem fala detectada.
-4. Reforçar a anonimização: além dos dados do paciente, remover nomes de terceiros comuns, endereços e números de documento antes de enviar à IA.
-5. Testes: validação do relatório, revisão obrigatória antes de remover o rótulo de rascunho, anonimização.
-6. Teste real: enviar um áudio curto de fala, gerar o relatório e conferir no app e no PDF/CSV.
+1. Calendário com pontos e lista do dia na página Agenda.
+2. Cartão de conexão do Google Agenda (status, conectar, sincronizar, desconectar).
+3. Página de retorno da autorização que conclui a conexão e volta para a Agenda.
+4. Publicar as funções de sincronização e ativar a sincronização automática a cada poucos minutos.
+5. Teste real: conectar uma conta, criar, remarcar e cancelar uma consulta e conferir no Google Agenda.
+
+## Ação necessária sua
+No Google Cloud Console, adicionar este endereço de retorno autorizado ao aplicativo OAuth: `https://connector-gateway.lovable.dev/api/v1/app-users/oauth2/callback`. Sem isso o Google recusa a conexão.
 
 ## Detalhes técnicos
-- Modelos: `openai/gpt-transcribe` (transcrição em streaming) e `openai/gpt-6-astra` via `/v1/responses` com schema JSON estrito; já implementados em `session-report`.
-- Nova coluna em `session_recordings`: `reviewed_report jsonb`, `reviewed_at`, `reviewed_by`; RLS por dono mantida.
-- Erros 402/403 do gateway exibidos com a mensagem original, sem novas tentativas automáticas.
-- Limite atual de 24 MB mantido; arquivos maiores precisam ser divididos.
+- Backend já existe: função `calendar-connect` (status/start/complete/disconnect/sync/worker) e fila `calendar_sync_jobs` alimentada por gatilho em `sessions`.
+- Nova rota `/oauth/google-calendar/return` lê `code`/`state` e chama `complete`; o estado é verificado no servidor.
+- Agendamento automático do worker via `pg_cron` + `pg_net` com o segredo do worker.
+- Calendário usa o componente `calendar` existente com `modifiers` para os pontos; consultas lidas de `sessions` com RLS por dono.
+- Sincronização em um sentido apenas (PsicoManager para Google).
