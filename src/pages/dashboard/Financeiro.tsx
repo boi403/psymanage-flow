@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { jsPDF } from "jspdf";
 import { TrendingUp, TrendingDown, DollarSign, Plus, Check, Trash2, FileText, Undo2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { financialEditable } from "@/lib/clinical";
 import { useAuth } from "@/hooks/useAuth";
 
+const todayBRT = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+
 export default function Financeiro() {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -20,7 +23,12 @@ export default function Financeiro() {
   const [editing, setEditing] = useState<{id:string;version:number}|null>(null);
   const [patientId,setPatientId]=useState("");
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ type: "receita", description: "", amount: "", due_date: new Date().toISOString().slice(0, 10), status: "Pendente", category: "" });
+  const [form, setForm] = useState({ type: "receita", description: "", amount: "", due_date: todayBRT(), status: "Pendente", category: "" });
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id], enabled: !!user,
+    queryFn: async () => (await supabase.from("profiles").select("full_name, crp").eq("id", user!.id).maybeSingle()).data,
+  });
 
   const { data: tx = [] } = useQuery({
     queryKey: ["transactions"],
@@ -61,13 +69,17 @@ export default function Financeiro() {
   const max = Math.max(1, ...months.map((x) => Math.max(x.r, x.d)));
 
   const receipt = (t: any) => {
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(`<html><head><title>Recibo</title></head><body style="font-family:sans-serif;padding:40px;max-width:600px;margin:auto">
-      <h2>RECIBO</h2><p>Recebi de <b>${t.patients?.name ?? "—"}</b> a quantia de <b>${brl(t.amount)}</b>
-      referente a: ${t.description}.</p><p>Data: ${dateBR(t.due_date + "T12:00")}</p>
-      <br/><br/><p>_______________________________<br/>${user?.user_metadata?.full_name ?? ""}<br/>CRP ${user?.user_metadata?.crp ?? ""}</p>
-      <script>window.print()</script></body></html>`);
+    const doc = new jsPDF();
+    let y = 30;
+    doc.setFontSize(16); doc.text("RECIBO", 105, y, { align: "center" }); y += 20;
+    doc.setFontSize(11);
+    for (const line of doc.splitTextToSize(`Recebi de ${t.patients?.name ?? "—"} a quantia de ${brl(t.amount)} referente a: ${t.description}.`, 170) as string[]) { doc.text(line, 20, y); y += 7; }
+    y += 8;
+    doc.text(`Data: ${dateBR((t.paid_at ?? t.due_date) + "T12:00")}`, 20, y); y += 30;
+    doc.text("_______________________________", 20, y); y += 7;
+    doc.text(profile?.full_name ?? "", 20, y); y += 7;
+    doc.text(`CRP ${profile?.crp ?? ""}`, 20, y);
+    doc.save(`recibo-${t.id}.pdf`);
   };
 
   const Card = ({ icon: Icon, label, value, sub }: any) => (
@@ -88,7 +100,7 @@ export default function Financeiro() {
           <h1 className="text-2xl font-bold text-foreground">Financeiro</h1>
           <p className="text-muted-foreground text-sm mt-1">Receitas, despesas, cobranças e recibos.</p>
         </div>
-        <Button onClick={() => {setEditing(null);setPatientId("");setForm({type:"receita",description:"",amount:"",due_date:new Date().toISOString().slice(0,10),status:"Pendente",category:""});setOpen(true);}} className="gradient-primary text-primary-foreground"><Plus className="w-4 h-4 mr-2" /> Novo lançamento</Button>
+        <Button onClick={() => {setEditing(null);setPatientId("");setForm({type:"receita",description:"",amount:"",due_date:todayBRT(),status:"Pendente",category:""});setOpen(true);}} className="gradient-primary text-primary-foreground"><Plus className="w-4 h-4 mr-2" /> Novo lançamento</Button>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">

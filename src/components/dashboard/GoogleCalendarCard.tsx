@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { CalendarCheck, RefreshCw, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -48,7 +49,13 @@ export function GoogleCalendarCard() {
       <div className="flex gap-2">
         {connected ? <>
           <Button size="sm" variant="outline" disabled={busy} onClick={() => run("sync")}><RefreshCw className="w-4 h-4 mr-1" />Sincronizar agora</Button>
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => confirm("Desconectar Google Agenda?") && run("disconnect")}><Unlink className="w-4 h-4 mr-1" />Desconectar</Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild><Button size="sm" variant="ghost" disabled={busy}><Unlink className="w-4 h-4 mr-1" />Desconectar</Button></AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader><AlertDialogTitle>Desconectar Google Agenda?</AlertDialogTitle><AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
+              <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => run("disconnect")}>Confirmar</AlertDialogAction></AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </> : <Button size="sm" disabled={busy || isLoading} onClick={() => run("start")} className="gradient-primary text-primary-foreground">Conectar Google Agenda</Button>}
       </div>
     </div>

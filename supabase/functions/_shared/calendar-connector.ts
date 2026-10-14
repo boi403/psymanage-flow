@@ -32,19 +32,31 @@ export async function syncUser(userId:string) {
  const db=admin();const {data:conn,error}=await db.from('app_user_connections').select('*').eq('user_id',userId).eq('connector_id','google_calendar').maybeSingle();
  if(error)throw error;if(!conn||conn.reconnect_required)return;
  const key=await decrypt(conn.connection_key_ciphertext);
- const {data:jobs,error:jobError}=await db.from('calendar_sync_jobs').select('*').eq('user_id',userId).order('updated_at').limit(100);
+ // Filter to pending jobs in SQL (version<>synced_version), not after an
+ // ORDER BY updated_at LIMIT 100 -- otherwise already-synced rows (whose
+ // updated_at never advances) can permanently fill the window and starve
+ // new jobs once a user has more than 100 historic sessions.
+ const {data:jobs,error:jobError}=await db.rpc('get_pending_calendar_jobs',{_user_id:userId,_limit:200});
  if(jobError)throw jobError;
  for(const job of jobs??[]) {
-  if(job.version===job.synced_version)continue;
   const eventId=`psico${job.session_id.replaceAll('-','')}`;
   const path=`/google_calendar/calendar/v3/calendars/primary/events/${eventId}`;
-  const payload={id:eventId,summary:'Consulta · PsicoManager',visibility:'private',start:{dateTime:job.starts_at},end:{dateTime:new Date(new Date(job.starts_at).getTime()+job.duration_min*60000).toISOString()},description:'Consulta agendada no PsicoManager. Alterações devem ser feitas no PsicoManager.'};
+  const payload={id:eventId,summary:'Consulta · PsicoManager',visibility:'private',status:job.cancelled?'cancelled':'confirmed',start:{dateTime:job.starts_at},end:{dateTime:new Date(new Date(job.starts_at).getTime()+job.duration_min*60000).toISOString()},description:'Consulta agendada no PsicoManager. Alterações devem ser feitas no PsicoManager.'};
   try {
    let response=await gateway(path,{method:job.cancelled?'DELETE':'PUT',...(job.cancelled?{}:{body:JSON.stringify(payload)})},key);
    if(response.status===401){const body=await response.clone().json().catch(()=>null);if(typeof body?.type==='string'&&body.type.startsWith('credential_')){await db.from('app_user_connections').update({reconnect_required:true}).eq('id',conn.id);return;}}
    if(!job.cancelled&&response.status===404)response=await gateway('/google_calendar/calendar/v3/calendars/primary/events',{method:'POST',body:JSON.stringify(payload)},key);
-   if(!(job.cancelled&&(response.status===404||response.status===410)))await checked(response);
+   // A concurrent sync run (e.g. a manual "Sincronizar agora" overlapping the
+   // worker) may have already created this event: 409 on create is a benign
+   // race, not a failure -- treat it as success instead of aborting the loop.
+   const benign=job.cancelled?(response.status===404||response.status===410):response.status===409;
+   if(!benign)await checked(response);
    const {error}=await db.from('calendar_sync_jobs').update({synced_version:job.version,last_error:null}).eq('id',job.id).eq('version',job.version);if(error)throw error;
-  } catch(e){await db.from('calendar_sync_jobs').update({last_error:'Não foi possível sincronizar com o Google Agenda.'}).eq('id',job.id);throw e;}
+  } catch(e){
+   // Don't let one bad job (e.g. a malformed payload the provider always
+   // rejects) abort every later job for this user -- record it and move on.
+   await db.from('calendar_sync_jobs').update({last_error:'Não foi possível sincronizar com o Google Agenda.'}).eq('id',job.id);
+   console.error('Calendar job sync failed',job.id,e);
+  }
  }
 }

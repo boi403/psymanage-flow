@@ -20,7 +20,9 @@ export default function Admin() {
     queryFn: async () => {
       const [s, p] = await Promise.all([
         supabase.from("subscriptions").select("*").order("created_at", { ascending: false }),
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        // F-03: never fetch other professionals' CPF here -- admin only needs
+        // these fields to list/search accounts, not their tax identifiers.
+        supabase.from("profiles").select("id, full_name, email, crp, phone, specialty, created_at").order("created_at", { ascending: false }),
       ]);
       return { subs: s.data ?? [], profiles: p.data ?? [] };
     },

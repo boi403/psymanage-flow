@@ -18,9 +18,13 @@ async function readEvents(response: Response, onEvent: (event: Record<string, an
 }
 async function providerFailure(response: Response) {
   const text = await response.text();
+  // Log the raw provider response for debugging, but never forward its body
+  // to the client -- it can contain internal details (model names, stack
+  // traces, rate-limit internals) that shouldn't leak past this boundary.
   console.error(`AI Gateway [${response.status}]: ${text}`);
-  let message = `Falha no serviço de IA (${response.status}).`;
-  try { const body = JSON.parse(text); message = body.message || body.error?.message || (typeof body.error === 'string' ? body.error : message); } catch { /* non JSON response */ }
+  const message = response.status === 429 ? 'Muitas requisições. Tente novamente em instantes.'
+    : response.status === 402 ? 'Créditos da IA esgotados. Adicione créditos no workspace.'
+    : `Falha no serviço de IA (${response.status}).`;
   return { error: message, status: response.status };
 }
 Deno.serve(async req => {

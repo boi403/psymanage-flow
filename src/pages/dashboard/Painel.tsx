@@ -1,13 +1,15 @@
-import { Calendar, Users, Wallet, TrendingUp, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Calendar, Users, Wallet, TrendingUp, CheckCircle2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { brl } from "@/lib/format";
 
-const Kpi = ({ icon: Icon, label, value, delta, color }: any) => (
+const Kpi = ({ icon: Icon, label, value, color }: any) => (
   <div className="bg-card border border-border rounded-2xl p-5 hover:shadow-brand transition-all">
     <div className="flex items-start justify-between mb-3">
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
         <Icon className="w-5 h-5" />
       </div>
-      <span className="text-xs font-semibold text-primary bg-primary-light px-2 py-1 rounded-md">{delta}</span>
     </div>
     <p className="text-xs text-muted-foreground font-medium">{label}</p>
     <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
@@ -18,6 +20,49 @@ export default function Painel() {
   const { user } = useAuth();
   const name = user?.user_metadata?.full_name?.split(" ")[0] ?? "Psicólogo(a)";
 
+  const { data } = useQuery({
+    queryKey: ["painel-overview"],
+    queryFn: async () => {
+      const [p, s, t] = await Promise.all([
+        supabase.from("patients").select("status"),
+        supabase.from("sessions").select("starts_at, status, patients(name)").order("starts_at"),
+        supabase.from("transactions").select("amount, status, type, due_date"),
+      ]);
+      return { patients: p.data ?? [], sessions: s.data ?? [], tx: t.data ?? [] };
+    },
+  });
+  const patients = data?.patients ?? [], sessions = data?.sessions ?? [], tx = data?.tx ?? [];
+
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const monthStr = todayStr.slice(0, 7);
+
+  const activePatients = patients.filter((p) => p.status === "Ativo").length;
+  const sessionsToday = sessions.filter((s) => s.starts_at.slice(0, 10) === todayStr).length;
+  const upcoming = sessions
+    .filter((s) => s.status === "Agendada" && new Date(s.starts_at).getTime() >= now.getTime() - 3600_000)
+    .slice(0, 4);
+  const monthSessions = sessions.filter((s) => s.starts_at.slice(0, 7) === monthStr);
+  const occupancy = monthSessions.length
+    ? Math.round((monthSessions.filter((s) => s.status !== "Cancelada" && s.status !== "Falta").length / monthSessions.length) * 100)
+    : 0;
+  const revenueMonth = tx
+    .filter((x) => x.type === "receita" && x.status === "Pago" && x.due_date?.slice(0, 7) === monthStr)
+    .reduce((a, x) => a + Number(x.amount), 0);
+
+  const statusLabel: Record<string, string> = { Agendada: "agendada", Realizada: "realizada", Cancelada: "cancelada", Falta: "falta" };
+  const statusClass: Record<string, string> = {
+    Agendada: "bg-orange-50 text-orange-700",
+    Realizada: "bg-green-50 text-green-700",
+    Cancelada: "bg-red-50 text-red-700",
+    Falta: "bg-red-50 text-red-700",
+  };
+
+  const recentPayments = tx
+    .filter((x) => x.type === "receita" && x.status === "Pago")
+    .slice(-4)
+    .reverse();
+
   return (
     <div className="space-y-6">
       <div>
@@ -26,10 +71,10 @@ export default function Painel() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Kpi icon={Calendar} label="Sessões hoje" value="8" delta="+2" color="bg-primary-light text-primary-dark" />
-        <Kpi icon={Users} label="Pacientes ativos" value="42" delta="+5" color="bg-blue-50 text-blue-600" />
-        <Kpi icon={Wallet} label="Receita do mês" value="R$ 12.480" delta="+18%" color="bg-green-50 text-green-600" />
-        <Kpi icon={TrendingUp} label="Taxa ocupação" value="87%" delta="+4%" color="bg-orange-50 text-orange-600" />
+        <Kpi icon={Calendar} label="Sessões hoje" value={sessionsToday} color="bg-primary-light text-primary-dark" />
+        <Kpi icon={Users} label="Pacientes ativos" value={activePatients} color="bg-blue-50 text-blue-600" />
+        <Kpi icon={Wallet} label="Receita do mês" value={brl(revenueMonth)} color="bg-green-50 text-green-600" />
+        <Kpi icon={TrendingUp} label="Taxa ocupação" value={`${occupancy}%`} color="bg-orange-50 text-orange-600" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -39,25 +84,20 @@ export default function Painel() {
             <button className="text-xs text-primary font-semibold hover:underline">Ver agenda</button>
           </div>
           <div className="space-y-3">
-            {[
-              { h: "09:00", n: "Maria Silva", t: "Terapia individual", s: "confirmada" },
-              { h: "10:30", n: "João Pereira", t: "Avaliação inicial", s: "pendente" },
-              { h: "14:00", n: "Ana Costa", t: "Terapia de casal", s: "confirmada" },
-              { h: "16:00", n: "Carlos Mendes", t: "Acompanhamento", s: "confirmada" },
-            ].map((it, i) => (
+            {upcoming.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma sessão agendada.</p>}
+            {upcoming.map((it: any, i: number) => (
               <div key={i} className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/50 transition-colors">
                 <div className="w-14 text-center">
-                  <p className="text-sm font-bold text-foreground">{it.h}</p>
+                  <p className="text-sm font-bold text-foreground">{new Date(it.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
                 </div>
                 <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-                  {it.n.split(" ").map(p => p[0]).join("").slice(0, 2)}
+                  {(it.patients?.name ?? "—").split(" ").map((p: string) => p[0]).join("").slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{it.n}</p>
-                  <p className="text-xs text-muted-foreground">{it.t}</p>
+                  <p className="text-sm font-semibold text-foreground truncate">{it.patients?.name ?? "—"}</p>
                 </div>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${it.s === "confirmada" ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-700"}`}>
-                  {it.s}
+                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusClass[it.status] ?? "bg-muted text-muted-foreground"}`}>
+                  {statusLabel[it.status] ?? it.status}
                 </span>
               </div>
             ))}
@@ -65,21 +105,17 @@ export default function Painel() {
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
-          <h2 className="font-bold text-foreground mb-5">Atividade recente</h2>
+          <h2 className="font-bold text-foreground mb-5">Pagamentos recentes</h2>
           <div className="space-y-4">
-            {[
-              { i: CheckCircle2, c: "text-green-600 bg-green-50", t: "Pagamento recebido", d: "R$ 200 · Maria Silva" },
-              { i: Clock, c: "text-orange-600 bg-orange-50", t: "Sessão reagendada", d: "João Pereira · amanhã 15h" },
-              { i: AlertCircle, c: "text-red-600 bg-red-50", t: "Pagamento pendente", d: "Ana Costa · 3 dias" },
-              { i: Users, c: "text-blue-600 bg-blue-50", t: "Novo paciente", d: "Lucas Almeida" },
-            ].map((it, i) => (
+            {recentPayments.length === 0 && <p className="text-sm text-muted-foreground">Nenhum pagamento registrado.</p>}
+            {recentPayments.map((it: any, i: number) => (
               <div key={i} className="flex items-start gap-3">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${it.c}`}>
-                  <it.i className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-green-600 bg-green-50">
+                  <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{it.t}</p>
-                  <p className="text-xs text-muted-foreground">{it.d}</p>
+                  <p className="text-sm font-semibold text-foreground">Pagamento recebido</p>
+                  <p className="text-xs text-muted-foreground">{brl(it.amount)}</p>
                 </div>
               </div>
             ))}

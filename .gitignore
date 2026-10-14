@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Env files shouldn't be committed, even when they currently hold only a
+# public anon key -- this stops a future secret added here from leaking too.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -64,23 +64,18 @@ export default function Agenda() {
     mutationFn: async ({ s, status }: { s: any; status: string }) => {
       const { error } = await supabase.from("sessions").update({ status }).eq("id", s.id);
       if (error) throw error;
-      if (status === "Realizada") {
-        const { data: exists } = await supabase.from("transactions").select("id").eq("session_id", s.id).maybeSingle();
-        if (!exists) await supabase.from("transactions").insert({
-          type: "receita", description: `Sessão — ${s.patients?.name ?? ""}`, amount: s.price,
-          due_date: s.starts_at.slice(0, 10), status: "Pendente", patient_id: s.patient_id, session_id: s.id, category: "Sessão",
-        });
-      }
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["sessions"] }); qc.invalidateQueries({ queryKey: ["transactions"] }); syncCal();
       if (v.status === "Realizada") toast.success("Sessão realizada — cobrança lançada no financeiro");
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => { await supabase.from("sessions").delete().eq("id", id); },
+    mutationFn: async (id: string) => { const { error } = await supabase.from("sessions").delete().eq("id", id); if (error) throw error; },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["sessions"] }); syncCal(); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const syncCal = () => calendarAction({ action: "sync" }).catch(() => {});

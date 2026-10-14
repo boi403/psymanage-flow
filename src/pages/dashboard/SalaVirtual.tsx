@@ -9,7 +9,7 @@ import SessionRecordings from "@/components/dashboard/SessionRecordings";
 
 export default function SalaVirtual() {
   const { id } = useParams();
-  const { data: s } = useQuery({
+  const { data: s, isLoading, error } = useQuery({
     queryKey: ["session", id],
     enabled: !!id,
     queryFn: async () => {
@@ -19,7 +19,9 @@ export default function SalaVirtual() {
       return data;
     },
   });
-  if (!s) return <p className="text-muted-foreground">Carregando sala...</p>;
+  if (isLoading) return <p className="text-muted-foreground">Carregando sala...</p>;
+  if (error) return <p className="text-destructive">Erro ao carregar a sala. Tente novamente.</p>;
+  if (!s) return <p className="text-muted-foreground">Sessão não encontrada.</p>;
   const room = `PsicoManager-${s.room_code}`;
   const url = `https://meet.jit.si/${room}`;
 
@@ -33,7 +35,14 @@ export default function SalaVirtual() {
             <p className="text-xs text-muted-foreground">{dateTimeBR(s.starts_at)} · {s.duration_min} min</p>
           </div>
         </div>
-        <Button variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copiado — envie ao paciente"); }}>
+        <Button variant="outline" onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(url);
+            toast.success("Link copiado — envie ao paciente");
+          } catch {
+            toast.error("Não foi possível copiar o link");
+          }
+        }}>
           <Copy className="w-4 h-4 mr-2" /> Copiar link do paciente
         </Button>
       </div>

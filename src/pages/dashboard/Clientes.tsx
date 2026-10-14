@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Plus, Phone, Mail, Pencil, Trash2, FileText } from "lucide-react";
+import { Search, Plus, Phone, Mail, Pencil, Trash2, FileText, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +54,16 @@ export default function Clientes() {
   const remove = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("patients").delete().eq("id", id); if (error) throw error; },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["patients"] }); toast.success("Paciente removido"); },
+    onError: (e: any) => {
+      if (e?.code === "23503" || /foreign key|violates/i.test(e?.message ?? "")) toast.error("Não é possível remover: este paciente possui histórico clínico ou sessões registradas.");
+      else toast.error(e?.message ?? "Erro ao remover paciente");
+    },
+  });
+
+  const anonymize = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.rpc("anonymize_patient" as any, { _patient_id: id }); if (error) throw error; },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["patients"] }); toast.success("Paciente anonimizado"); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
@@ -131,6 +141,7 @@ export default function Clientes() {
                     <div className="flex gap-1 justify-end">
                       <Button size="icon" variant="ghost" title="Prontuário" onClick={() => setRecordPatient(c)}><FileText className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => openEdit(c)}><Pencil className="w-4 h-4" /></Button>
+                      <Button size="icon" variant="ghost" title="Anonimizar paciente (LGPD)" onClick={() => confirm("Anonimizar este paciente? Nome, contato e CPF serão removidos permanentemente. O prontuário clínico será mantido para a guarda obrigatória de registros.") && anonymize.mutate(c.id)}><ShieldOff className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => confirm("Remover paciente?") && remove.mutate(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                     </div>
                   </td>

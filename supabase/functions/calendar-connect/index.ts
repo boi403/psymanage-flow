@@ -8,12 +8,15 @@ Deno.serve(async req=>{
  if(req.method!=='POST')return json({error:'Método não permitido'},405);
  try {
   const url=Deno.env.get('SUPABASE_URL'),anon=Deno.env.get('SUPABASE_ANON_KEY');if(!url||!anon)throw new Error('Configuração indisponível');
-  const input=z.object({action:z.enum(['status','start','complete','disconnect','sync','worker']),origin:z.string().url().optional(),code:z.string().min(1).max(4096).optional()}).strict().safeParse(await req.json().catch(()=>null));
+  const input=z.object({action:z.enum(['status','start','complete','disconnect','sync','worker']),origin:z.string().url().optional(),code:z.string().min(1).max(4096).optional(),state:z.string().uuid().optional(),user_id:z.string().uuid().optional()}).strict().safeParse(await req.json().catch(()=>null));
   if(!input.success)return json({error:'Solicitação inválida'},400);
   const db=admin();const {action}=input.data;
   if(action==='worker'){
    const {data}=await db.from('calendar_worker_secret').select('secret').eq('id',1).maybeSingle();
    if(!data||req.headers.get('X-Calendar-Worker')!==data.secret)return json({error:'Não autorizado'},401);
+   // A single row change only needs its own user resynced; a bare {action:'worker'}
+   // (e.g. a future cron tick with no specific trigger) still does the full scan.
+   if(input.data.user_id){try{await syncUser(input.data.user_id);}catch(e){console.error('Calendar sync failed',e);}return json({ok:true});}
    const {data:connections}=await db.from('app_user_connections').select('user_id').eq('connector_id','google_calendar').eq('reconnect_required',false).limit(500);
    for(const conn of connections??[]){try{await syncUser(conn.user_id);}catch(e){console.error('Calendar sync failed',e);}}
    return json({ok:true});
@@ -26,13 +29,25 @@ Deno.serve(async req=>{
   if(action==='start'){
    const origin=input.data.origin;if(!origin||origin!==req.headers.get('Origin')||new URL(origin).origin!==origin||(!origin.startsWith('https://')&&origin!=='http://localhost:8080'))return json({error:'Origem inválida'},400);
    const clientKey=Deno.env.get('GOOGLE_CALENDAR_APP_USER_CONNECTOR_CLIENT_API_KEY');if(!clientKey)return json({error:'Configure a conexão Google Agenda no Lovable'},503);
-   const response=await checked(await gateway('/api/v1/app-users/oauth2/authorize',{method:'POST',body:JSON.stringify({connector_id:'google_calendar',app_user_id:user.id,return_url:`${origin}/oauth/google-calendar/return`,credentials_configuration:{scopes}})},conn?await decrypt(conn.connection_key_ciphertext):undefined,clientKey));
+   // Bind this OAuth flow to the current user with a short-lived, single-use
+   // state token (path segment, so it can't collide with however the
+   // provider appends "?code=" to the return URL). Without this, an attacker
+   // who starts their own OAuth flow and sends the resulting link to a victim
+   // can get their Google connection attached to the victim's account.
+   const {data:stateRow,error:stateError}=await db.from('calendar_oauth_states').insert({user_id:user.id}).select('state').single();
+   if(stateError)throw stateError;
+   const response=await checked(await gateway('/api/v1/app-users/oauth2/authorize',{method:'POST',body:JSON.stringify({connector_id:'google_calendar',app_user_id:user.id,return_url:`${origin}/oauth/google-calendar/return/${stateRow.state}`,credentials_configuration:{scopes}})},conn?await decrypt(conn.connection_key_ciphertext):undefined,clientKey));
    return json({authorizationUrl:response.authorization_url});
   }
   if(action==='complete'){
    if(!input.data.code)return json({error:'Código ausente'},400);
+   if(!input.data.state)return json({error:'Estado ausente'},400);
+   const {data:stateRow,error:stateError}=await db.from('calendar_oauth_states').delete().eq('state',input.data.state).eq('user_id',user.id).gt('expires_at',new Date().toISOString()).select().maybeSingle();
+   if(stateError)throw stateError;
+   if(!stateRow)return json({error:'Conexão expirada ou inválida; inicie novamente'},400);
    const result=await checked(await gateway('/api/v1/app-users/oauth2/exchange',{method:'POST',body:JSON.stringify({code:input.data.code})}));
    if(result.connector_id!=='google_calendar'||typeof result.api_key!=='string')return json({error:'Conexão inválida'},400);
+   if(result.app_user_id&&result.app_user_id!==user.id)return json({error:'Conexão inválida'},400);
    const {error}=await db.from('app_user_connections').upsert({user_id:user.id,connector_id:'google_calendar',connection_key_ciphertext:await encrypt(result.api_key),reconnect_required:false,updated_at:new Date().toISOString()},{onConflict:'user_id,connector_id'});if(error)throw error;
    const {data:sessions,error:sessionError}=await client.from('sessions').select('id,user_id,starts_at,duration_min,status');if(sessionError)throw sessionError;
    const jobs=(sessions??[]).map(s=>({user_id:user.id,session_id:s.id,starts_at:s.starts_at,duration_min:s.duration_min,cancelled:s.status==='Cancelada'}));
@@ -44,5 +59,5 @@ Deno.serve(async req=>{
    return json({ok:true});
   }
   await syncUser(user.id);return json({ok:true});
- }catch(e){return json({error:e instanceof Error?e.message:'Falha na conexão'},502);}
+ }catch(e){console.error('calendar-connect error',e);return json({error:'Falha na conexão com o Google Agenda'},502);}
 });

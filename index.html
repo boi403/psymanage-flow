@@ -6,6 +6,10 @@
     <title>PsicoManager – Sistema de Gestão para Psicólogos</title>
     <meta name="description" content="Agenda online, prontuário eletrônico, sala virtual e controle financeiro para psicólogos. Mais de 20.000 profissionais confiam no PsicoManager." />
     <meta name="author" content="PsicoManager" />
+    <!-- F-13: basic CSP. A <meta> tag can't set frame-ancestors/report-uri; those
+         (plus a stronger script-src without external CDNs) should also be set as
+         real HTTP response headers at the hosting layer when possible. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://ai.gateway.lovable.dev; object-src 'none'; base-uri 'self'; form-action 'self';" />
 
     <meta property="og:title" content="PsicoManager – Sistema de Gestão para Psicólogos" />
     <meta property="og:description" content="Agenda online, prontuário eletrônico, sala virtual e controle financeiro para psicólogos." />

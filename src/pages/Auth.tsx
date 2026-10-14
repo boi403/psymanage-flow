@@ -125,7 +125,7 @@ const Auth = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha</Label>
-                  <Input id="signup-password" type="password" required minLength={6} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                  <Input id="signup-password" type="password" required minLength={10} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Mínimo 10 caracteres" />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full gradient-primary text-primary-foreground font-bold">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Criar conta grátis"}

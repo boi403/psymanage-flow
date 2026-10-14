@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Calendar, Wallet, BarChart3, Megaphone, Settings, Building2, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Wallet, BarChart3, Megaphone, Settings, Building2, LogOut, CreditCard, ShieldCheck } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useNavigate } from "react-router-dom";
 
 const items = [
@@ -13,6 +14,7 @@ const items = [
   { title: "Marketing", url: "/dashboard/marketing", icon: Megaphone },
   { title: "Configuração", url: "/dashboard/configuracao", icon: Settings },
   { title: "Minha clínica", url: "/dashboard/clinica", icon: Building2 },
+  { title: "Meu plano", url: "/dashboard/planos", icon: CreditCard },
 ];
 
 export function AppSidebar() {
@@ -20,7 +22,9 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
   const { signOut } = useAuth();
+  const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
+  const menuItems = isAdmin ? [...items, { title: "Administração", url: "/dashboard/admin", icon: ShieldCheck }] : items;
 
   return (
     <Sidebar collapsible="icon">
@@ -39,7 +43,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
+              {menuItems.map((item) => {
                 const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>

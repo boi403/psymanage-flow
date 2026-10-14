@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,23 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
+import { toast } from "sonner";
+
+const todayBRT = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
 export default function Relatorios() {
-  const today = new Date();
-  const [from, setFrom] = useState(new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10));
-  const [to, setTo] = useState(today.toISOString().slice(0, 10));
+  const [from, setFrom] = useState(() => todayBRT().slice(0, 7) + "-01");
+  const [to, setTo] = useState(todayBRT);
 
-  const { data } = useQuery({
+  const { data, error } = useQuery({
     queryKey: ["report", from, to],
     queryFn: async () => {
       const [p, s, t] = await Promise.all([
         supabase.from("patients").select("*"),
-        supabase.from("sessions").select("*, patients(name)").gte("starts_at", from).lte("starts_at", to + "T23:59:59"),
+        supabase.from("sessions").select("*, patients(name)").gte("starts_at", from).lte("starts_at", to + "T23:59:59-03:00"),
         supabase.from("transactions").select("*").gte("due_date", from).lte("due_date", to),
       ]);
+      if (p.error) throw p.error;
+      if (s.error) throw s.error;
+      if (t.error) throw t.error;
       return { patients: p.data ?? [], sessions: s.data ?? [], tx: t.data ?? [] };
     },
   });
+  useEffect(() => { if (error) toast.error(error.message); }, [error]);
   const patients = data?.patients ?? [], sessions = data?.sessions ?? [], tx = data?.tx ?? [];
   const cnt = (st: string) => patients.filter((x) => x.status === st).length;
   const sCnt = (st: string) => sessions.filter((x) => x.status === st).length;

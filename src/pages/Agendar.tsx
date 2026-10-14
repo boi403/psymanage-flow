@@ -5,6 +5,7 @@ import { CalendarCheck, Video, MapPin, Clock, CheckCircle2, ArrowLeft, CalendarD
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { dateTimeBR } from "@/lib/format";
 import { bookingContactSchema } from "@/lib/booking";
@@ -19,6 +20,7 @@ export default function Agendar() {
   const [day, setDay] = useState("");
   const [slot, setSlot] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", phone: "", email: "" });
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ starts_at: string; duration_min: number; modality: string } | null>(null);
 
@@ -54,8 +56,8 @@ export default function Agendar() {
       const parsed = bookingContactSchema.safeParse(form);
       if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Verifique seus dados");
       const { data, error } = await supabase.rpc("book_slot", {
-        _slot_id: selected.id, _name: parsed.data.name, _phone: parsed.data.phone, _email: parsed.data.email,
-      });
+        _slot_id: selected.id, _name: parsed.data.name, _phone: parsed.data.phone, _email: parsed.data.email, _consent: consent,
+      } as any);
       if (error) throw error;
       if (!data) throw new Error("Não foi possível confirmar a consulta. Tente novamente.");
       return { ...selected, starts_at: data };
@@ -125,7 +127,8 @@ export default function Agendar() {
                 <div className="space-y-1.5"><Label htmlFor="patient-name">Nome completo *</Label><Input id="patient-name" autoComplete="name" required maxLength={120} disabled={book.isPending} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label htmlFor="patient-phone">WhatsApp com DDD *</Label><Input id="patient-phone" type="tel" autoComplete="tel" required maxLength={30} placeholder="(11) 99999-9999" disabled={book.isPending} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label htmlFor="patient-email">E-mail (opcional)</Label><Input id="patient-email" autoComplete="email" maxLength={160} type="email" disabled={book.isPending} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-                <Button type="submit" className="w-full" disabled={book.isPending}><CalendarCheck />{book.isPending ? "Confirmando…" : "Confirmar agendamento"}</Button>
+                <label className="flex items-start gap-2 text-sm text-muted-foreground"><Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} disabled={book.isPending} /><span>Li e concordo com o tratamento dos meus dados pessoais para fins de agendamento, conforme a <Link to="/privacidade" className="underline hover:text-foreground" target="_blank">Política de Privacidade</Link>.</span></label>
+                <Button type="submit" className="w-full" disabled={book.isPending || !consent}><CalendarCheck />{book.isPending ? "Confirmando…" : "Confirmar agendamento"}</Button>
               </form>
             </section>}
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
