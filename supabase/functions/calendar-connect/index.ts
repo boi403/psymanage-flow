@@ -27,7 +27,14 @@ Deno.serve(async req=>{
   const {data:conn,error}=await db.from('app_user_connections').select('*').eq('user_id',user.id).eq('connector_id','google_calendar').maybeSingle();if(error)throw error;
   if(action==='status')return json({connected:!!conn,reconnectRequired:conn?.reconnect_required??false});
   if(action==='start'){
-   const origin=input.data.origin;if(!origin||origin!==req.headers.get('Origin')||new URL(origin).origin!==origin||(!origin.startsWith('https://')&&origin!=='http://localhost:8080'))return json({error:'Origem inválida'},400);
+   // The native app (Capacitor) has no meaningful browser Origin header to
+   // check against, so its fixed, hardcoded scheme is allowed by exact match
+   // instead of the web Origin-header check below. It is a constant, never
+   // attacker-controlled, so this doesn't weaken the check for web callers.
+   const NATIVE_OAUTH_SCHEME='com.psicomanager.app:';
+   const origin=input.data.origin;
+   const isNative=origin===NATIVE_OAUTH_SCHEME;
+   if(!origin||(!isNative&&(origin!==req.headers.get('Origin')||new URL(origin).origin!==origin||(!origin.startsWith('https://')&&origin!=='http://localhost:8080'))))return json({error:'Origem inválida'},400);
    const clientKey=Deno.env.get('GOOGLE_CALENDAR_APP_USER_CONNECTOR_CLIENT_API_KEY');if(!clientKey)return json({error:'Configure a conexão Google Agenda no Lovable'},503);
    // Bind this OAuth flow to the current user with a short-lived, single-use
    // state token (path segment, so it can't collide with however the

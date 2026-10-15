@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
+
+// On native, this must match CFBundleURLSchemes (iOS) / the intent-filter
+// scheme (Android) -- see ios/App/App/Info.plist and
+// android/app/src/main/AndroidManifest.xml. No "//" after the colon
+// (so `${origin}/oauth/...` below produces one slash, not two/three).
+const NATIVE_OAUTH_SCHEME = "com.psicomanager.app:";
 
 export async function calendarAction(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke("calendar-connect", { body });
@@ -25,8 +33,15 @@ export function GoogleCalendarCard() {
     setBusy(true);
     try {
       if (action === "start") {
-        const r = await calendarAction({ action, origin: window.location.origin });
-        window.location.href = r.authorizationUrl; return;
+        const native = Capacitor.isNativePlatform();
+        const r = await calendarAction({ action, origin: native ? NATIVE_OAUTH_SCHEME : window.location.origin });
+        // Google blocks OAuth consent screens inside an embedded WebView, so on
+        // native this must open in the system browser; the return_url (built
+        // server-side from NATIVE_OAUTH_SCHEME above) comes back as a deep link
+        // handled by useDeepLinks(), not a WebView navigation.
+        if (native) { await Browser.open({ url: r.authorizationUrl }); }
+        else { window.location.href = r.authorizationUrl; }
+        return;
       }
       await calendarAction({ action });
       toast.success(action === "sync" ? "Agenda sincronizada" : "Google Agenda desconectado");

@@ -1,0 +1,90 @@
+# Cloud CI config for Codemagic (https://codemagic.io) -- builds the iOS and
+# Android apps without needing a local Mac. NOT tested against a real
+# Codemagic account; review and adjust once connected.
+#
+# Setup required in the Codemagic dashboard before this runs successfully:
+#   1. Connect this GitHub repo (codemagic.io -> Add application).
+#   2. Android release signing: add a keystore under
+#      Codemagic UI -> Team settings -> Code signing identities -> Android keystores,
+#      then reference it as `android_signing` below (uncomment once added).
+#   3. iOS signing: either let Codemagic manage certificates automatically
+#      (needs an App Store Connect API key added under
+#      Code signing identities -> iOS code signing) or upload your own
+#      certificate + provisioning profile. Requires a paid Apple Developer
+#      Program account ($99/yr) -- xtool's free-Apple-ID sideloading does NOT
+#      cover this (see chat for why).
+#   4. Add any Supabase/public env vars this build needs as Codemagic
+#      environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY,
+#      VITE_SUPABASE_PROJECT_ID -- same values as .env, which is gitignored).
+
+workflows:
+  android-release:
+    name: Android Release
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      node: 20
+      vars:
+        VITE_SUPABASE_URL: $VITE_SUPABASE_URL
+        VITE_SUPABASE_PUBLISHABLE_KEY: $VITE_SUPABASE_PUBLISHABLE_KEY
+        VITE_SUPABASE_PROJECT_ID: $VITE_SUPABASE_PROJECT_ID
+      # android_signing: keystore_reference_name   # set this up in the dashboard, then uncomment
+    scripts:
+      - name: Install JS dependencies
+        script: npm ci
+      - name: Build web assets
+        script: npm run build
+      - name: Sync Capacitor
+        script: npx cap sync android
+      - name: Build Android App Bundle
+        script: |
+          cd android
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/*.apk
+    publishing:
+      email:
+        recipients:
+          - mateus.orezende@gmail.com
+
+  ios-release:
+    name: iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      node: 20
+      xcode: latest
+      cocoapods: default
+      vars:
+        VITE_SUPABASE_URL: $VITE_SUPABASE_URL
+        VITE_SUPABASE_PUBLISHABLE_KEY: $VITE_SUPABASE_PUBLISHABLE_KEY
+        VITE_SUPABASE_PROJECT_ID: $VITE_SUPABASE_PROJECT_ID
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.psicomanager.app
+    scripts:
+      - name: Install JS dependencies
+        script: npm ci
+      - name: Build web assets
+        script: npm run build
+      - name: Sync Capacitor
+        script: npx cap sync ios
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios/App
+          pod install
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+      - name: Build .ipa
+        script: |
+          xcode-project build-ipa \
+            --workspace "ios/App/App.xcworkspace" \
+            --scheme "App"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - mateus.orezende@gmail.com

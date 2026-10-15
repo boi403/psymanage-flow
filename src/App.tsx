@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
+import { useDeepLinks } from "@/hooks/useDeepLinks";
 import GoogleCalendarReturn from "@/pages/GoogleCalendarReturn";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -27,6 +28,33 @@ import Admin from "./pages/dashboard/Admin";
 
 const queryClient = new QueryClient();
 
+const Routed = () => {
+  useDeepLinks();
+  return (
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/agendar/:userId" element={<Agendar />} />
+      <Route path="/privacidade" element={<Privacidade />} />
+      <Route path="/oauth/google-calendar/return/:state" element={<ProtectedRoute><GoogleCalendarReturn /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+        <Route index element={<Painel />} />
+        <Route path="clientes" element={<Clientes />} />
+        <Route path="agenda" element={<Agenda />} />
+        <Route path="sala/:id" element={<SalaVirtual />} />
+        <Route path="financeiro" element={<Financeiro />} />
+        <Route path="relatorios" element={<Relatorios />} />
+        <Route path="marketing" element={<Marketing />} />
+        <Route path="configuracao" element={<Configuracao />} />
+        <Route path="clinica" element={<MinhaClinica />} />
+        <Route path="planos" element={<Planos />} />
+        <Route path="admin" element={<Admin />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -35,27 +63,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/agendar/:userId" element={<Agendar />} />
-              <Route path="/privacidade" element={<Privacidade />} />
-              <Route path="/oauth/google-calendar/return/:state" element={<ProtectedRoute><GoogleCalendarReturn /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-                <Route index element={<Painel />} />
-                <Route path="clientes" element={<Clientes />} />
-                <Route path="agenda" element={<Agenda />} />
-                <Route path="sala/:id" element={<SalaVirtual />} />
-                <Route path="financeiro" element={<Financeiro />} />
-                <Route path="relatorios" element={<Relatorios />} />
-                <Route path="marketing" element={<Marketing />} />
-                <Route path="configuracao" element={<Configuracao />} />
-                <Route path="clinica" element={<MinhaClinica />} />
-                <Route path="planos" element={<Planos />} />
-                <Route path="admin" element={<Admin />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Routed />
           </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
