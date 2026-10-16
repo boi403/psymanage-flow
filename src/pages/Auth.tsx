@@ -17,6 +17,10 @@ const Auth = () => {
   const [invite, setInvite] = useState(params.get("convite") ?? "");
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
+  // Carried from PricingSection.tsx ("Começar grátis"/"Começar 15 dias grátis")
+  // so picking a plan before logging in still lands the person on it after.
+  const plano = params.get("plano");
+  const destination = plano ? `/dashboard/planos?plan=${encodeURIComponent(plano)}` : "/dashboard";
 
   // login
   const [loginEmail, setLoginEmail] = useState("");
@@ -31,8 +35,8 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState("");
 
   useEffect(() => {
-    if (!authLoading && user) navigate("/dashboard", { replace: true });
-  }, [user, authLoading, navigate]);
+    if (!authLoading && user) navigate(destination, { replace: true });
+  }, [user, authLoading, navigate, destination]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +45,7 @@ const Auth = () => {
     setLoading(false);
     if (error) return toast.error(error.message === "Invalid login credentials" ? "E-mail ou senha incorretos." : error.message);
     toast.success("Bem-vindo de volta!");
-    navigate("/dashboard");
+    navigate(destination);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -51,7 +55,9 @@ const Auth = () => {
       email: signupEmail,
       password: signupPassword,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth`,
+        // Carries the plan choice through e-mail confirmation too, not just
+        // the immediate-login path below.
+        emailRedirectTo: `${window.location.origin}/auth${plano ? `?plano=${encodeURIComponent(plano)}` : ""}`,
         data: { full_name: name, crp, specialty, phone, invite_code: invite.trim() },
       },
     });
@@ -65,7 +71,7 @@ const Auth = () => {
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/auth` });
     if (result.error) { setLoading(false); return toast.error("Erro ao entrar com Google."); }
     if (result.redirected) return;
-    navigate("/dashboard");
+    navigate(destination);
   };
 
   return (

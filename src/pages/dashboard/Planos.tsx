@@ -50,13 +50,18 @@ export default function Planos() {
           const price = cycle === "anual" ? p.yearly : p.monthly;
           const isCurrent = current?.plan === p.id && current.status !== "cancelada";
           return (
-            <div key={p.id} className={`bg-card rounded-2xl p-6 border-2 ${preselect === p.id || isCurrent ? "border-primary" : "border-border"}`}>
+            <div key={p.id} className={`bg-card rounded-2xl p-6 border-2 flex flex-col ${preselect === p.id || isCurrent ? "border-primary" : "border-border"}`}>
               <p className="font-extrabold text-foreground">{p.id}</p>
+              <p className="text-xs text-muted-foreground mt-1">{p.desc}</p>
               <p className="text-3xl font-extrabold text-foreground mt-3">{price === 0 ? "Grátis" : brl(price)}</p>
               {price > 0 && <p className="text-xs text-muted-foreground">/mês</p>}
               <Button disabled={isCurrent || choose.isPending} onClick={() => choose.mutate(p.id)} className="w-full mt-5 gradient-primary text-primary-foreground">
                 {isCurrent ? "Plano atual" : price === 0 ? "Usar grátis" : "Começar 15 dias grátis"}
               </Button>
+              <ul className="space-y-1.5 mt-5">
+                {p.features.map((f) => <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground"><span className="text-primary font-extrabold shrink-0">✓</span>{f}</li>)}
+                {p.disabled.map((f) => <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground/60"><span className="shrink-0">✕</span>{f}</li>)}
+              </ul>
             </div>
           );
         })}
