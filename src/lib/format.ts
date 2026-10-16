@@ -25,8 +25,8 @@ export const PLANS = [
     disabled: [],
   },
   {
-    id: "Clínica", desc: "Para clínicas multi-profissionais", monthly: 299, yearly: 239,
-    features: ["Tudo do Profissional", "Multi-profissionais", "Split de pagamento", "Dashboard administrativo", "Gestão de salas", "Suporte dedicado"],
+    id: "Clínica", desc: "Para quem quer o pacote completo com atendimento prioritário", monthly: 299, yearly: 239,
+    features: ["Tudo do Profissional", "Onboarding guiado", "Suporte dedicado com prioridade", "Prioridade em novas funcionalidades"],
     disabled: [],
   },
 ] as const;

@@ -67,14 +67,13 @@ const features: Record<string, { title: string; desc: string; items: { title: st
     ],
   },
   psicobank: {
-    title: "PsicoBank – Conta Digital",
-    desc: "Conta digital integrada para receber seus pagamentos sem burocracia.",
+    title: "PsicoBank – Médias e Extrato",
+    desc: "Um raio-x de quanto entra no seu consultório, direto dos lançamentos que você já registra no Financeiro.",
     items: [
-      { title: "Receba por PIX instantaneamente", desc: "Chave PIX integrada para recebimentos imediatos." },
-      { title: "Extrato em tempo real", desc: "Acompanhe todas as movimentações na plataforma." },
-      { title: "Transferências facilitadas", desc: "Transfira para qualquer banco sem custo." },
-      { title: "Split de pagamento para clínicas", desc: "Divida automaticamente entre profissionais." },
-      { title: "Sem mensalidade", desc: "Conta gratuita para usuários do PsicoManager." },
+      { title: "Média de recebimento por semana e por mês", desc: "Calculada automaticamente a partir dos pagamentos confirmados." },
+      { title: "Gráfico de receita por categoria", desc: "Veja em um gráfico de pizza de onde vem o seu faturamento." },
+      { title: "Extrato em PDF", desc: "Baixe o extrato do período com todos os lançamentos e o saldo." },
+      { title: "Sempre atualizado", desc: "Puxa direto das sessões e cobranças já lançadas, sem retrabalho." },
     ],
   },
 };
@@ -154,7 +153,49 @@ const FeatureMockup = ({ tab }: { tab: string }) => {
   if (tab === "prontuario") return <ProntuarioMockup />;
   if (tab === "financeiro") return <FinanceiroMockup />;
   if (tab === "relatorios") return <RelatoriosMockup />;
+  if (tab === "psicobank") return <PsicoBankMockup />;
   return <GenericMockup tab={tab} />;
+};
+
+const PsicoBankMockup = () => {
+  const slices = [
+    { label: "Consultas", pct: 68, color: "#00c2b2" },
+    { label: "Avaliações", pct: 20, color: "#0a8f7d" },
+    { label: "Outros", pct: 12, color: "#f59e0b" },
+  ];
+  let acc = 0;
+  const gradient = slices.map((s) => {
+    const from = acc; acc += s.pct;
+    return `${s.color} ${from}% ${acc}%`;
+  }).join(", ");
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="rounded-[10px] p-3 border bg-primary-light border-primary/20 text-primary-dark">
+          <div className="text-[10px] font-bold text-muted-foreground mb-1">Média semanal</div>
+          <div className="text-base font-extrabold">R$ 1.840</div>
+        </div>
+        <div className="rounded-[10px] p-3 border bg-emerald-50 border-emerald-200 text-emerald-800">
+          <div className="text-[10px] font-bold text-muted-foreground mb-1">Média mensal</div>
+          <div className="text-base font-extrabold">R$ 7.360</div>
+        </div>
+      </div>
+      <div className="flex items-center gap-5 mb-4">
+        <div className="w-24 h-24 rounded-full shrink-0" style={{ background: `conic-gradient(${gradient})` }} />
+        <div className="space-y-1.5">
+          {slices.map((s) => (
+            <div key={s.label} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+              {s.label} <span className="font-bold text-foreground">{s.pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="text-center">
+        <span className="text-[11px] text-primary font-semibold cursor-pointer hover:underline">Baixar extrato (PDF) ↓</span>
+      </div>
+    </div>
+  );
 };
 
 const AgendaMockup = () => (
@@ -308,13 +349,12 @@ const RelatoriosMockup = () => (
 const GenericMockup = ({ tab }: { tab: string }) => {
   const labels: Record<string, { title: string; items: string[] }> = {
     sala: { title: "Sala Virtual", items: ["Videochamada HD criptografada", "Chat integrado em tempo real", "Compartilhamento de tela", "Gravação com consentimento"] },
-    psicobank: { title: "PsicoBank", items: ["PIX instantâneo integrado", "Extrato em tempo real", "Sem mensalidade", "Split para clínicas"] },
   };
   const data = labels[tab] || { title: tab, items: [] };
   return (
     <div className="text-center py-8">
       <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-primary flex items-center justify-center text-primary-foreground text-2xl font-extrabold">
-        {tab === "sala" ? "📹" : "🏦"}
+        📹
       </div>
       <h4 className="text-lg font-bold text-foreground mb-4">{data.title}</h4>
       <div className="space-y-2">

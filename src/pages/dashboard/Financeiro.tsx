@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown, DollarSign, Plus, Check, Trash2, FileText, Undo2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ export default function Financeiro() {
   const [patientId,setPatientId]=useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ type: "receita", description: "", amount: "", due_date: todayBRT(), status: "Pendente", category: "" });
+  const [extratoMonth, setExtratoMonth] = useState(todayBRT().slice(0, 7));
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id], enabled: !!user,
@@ -67,6 +69,49 @@ export default function Financeiro() {
     return { m, r: sum((t) => t.type === "receita" && inM(t)), d: sum((t) => t.type === "despesa" && inM(t)) };
   });
   const max = Math.max(1, ...months.map((x) => Math.max(x.r, x.d)));
+
+  const paidReceita = tx.filter((t: any) => t.type === "receita" && t.status === "Pago");
+  const earliestPaid = paidReceita.reduce((min: string | null, t: any) => (!min || t.due_date < min ? t.due_date : min), null as string | null);
+  const daysElapsed = earliestPaid ? Math.max(1, (Date.now() - new Date(earliestPaid + "T12:00").getTime()) / 86_400_000) : 1;
+  const mediaSemanal = recPago / Math.max(1, daysElapsed / 7);
+  const mediaMensal = recPago / Math.max(1, daysElapsed / 30.44);
+
+  const catColors = ["#00c2b2", "#0a8f7d", "#f59e0b", "#60a5fa", "#a78bfa", "#f472b6"];
+  const byCategory = Object.entries(
+    paidReceita.reduce((acc: Record<string, number>, t: any) => {
+      const k = t.category || "Outros";
+      acc[k] = (acc[k] ?? 0) + Number(t.amount);
+      return acc;
+    }, {})
+  ).map(([name, value], i) => ({ name, value: value as number, color: catColors[i % catColors.length] }));
+
+  const extrato = () => {
+    const period = tx.filter((t: any) => t.due_date.slice(0, 7) === extratoMonth).sort((a: any, b: any) => a.due_date.localeCompare(b.due_date));
+    const doc = new jsPDF();
+    let y = 20;
+    doc.setFontSize(16); doc.text("EXTRATO FINANCEIRO", 105, y, { align: "center" }); y += 9;
+    doc.setFontSize(10);
+    doc.text(`${profile?.full_name ?? ""}${profile?.crp ? ` · CRP ${profile.crp}` : ""}`, 105, y, { align: "center" }); y += 6;
+    doc.text(`Período: ${extratoMonth}`, 105, y, { align: "center" }); y += 12;
+    doc.setFontSize(9); doc.setFont("helvetica", "bold");
+    doc.text("Data", 20, y); doc.text("Descrição", 48, y); doc.text("Status", 130, y); doc.text("Valor", 155, y); doc.text("Saldo", 180, y);
+    doc.setFont("helvetica", "normal"); y += 4; doc.line(20, y, 195, y); y += 6;
+    let saldo = 0;
+    for (const t of period) {
+      if (t.status === "Pago") saldo += t.type === "receita" ? Number(t.amount) : -Number(t.amount);
+      if (y > 275) { doc.addPage(); y = 20; }
+      doc.text(dateBR(t.due_date + "T12:00"), 20, y);
+      doc.text((doc.splitTextToSize(t.description, 78) as string[])[0], 48, y);
+      doc.text(t.status, 130, y);
+      doc.text(`${t.type === "despesa" ? "-" : ""}${brl(t.amount)}`, 155, y);
+      doc.text(brl(saldo), 180, y);
+      y += 7;
+    }
+    if (!period.length) { doc.text("Nenhum lançamento neste período.", 20, y); y += 7; }
+    y += 3; doc.line(20, y, 195, y); y += 8;
+    doc.setFontSize(11); doc.text(`Saldo do período (pago): ${brl(saldo)}`, 20, y);
+    doc.save(`extrato-${extratoMonth}.pdf`);
+  };
 
   const receipt = (t: any) => {
     const doc = new jsPDF();
@@ -121,6 +166,50 @@ export default function Financeiro() {
               <span className="text-[10px] text-muted-foreground font-medium">{x.m}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl p-6">
+        <h2 className="font-bold text-foreground mb-1">PsicoBank — Médias e Extrato</h2>
+        <p className="text-xs text-muted-foreground mb-5">Calculado a partir dos pagamentos já confirmados no Financeiro.</p>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Card icon={TrendingUp} label="Média semanal" value={brl(mediaSemanal)} sub="Recebido, média por semana" />
+              <Card icon={TrendingUp} label="Média mensal" value={brl(mediaMensal)} sub="Recebido, média por mês" />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input type="month" value={extratoMonth} onChange={(e) => setExtratoMonth(e.target.value)} className="w-44" />
+              <Button variant="outline" size="sm" onClick={extrato}><FileText className="w-4 h-4 mr-1" /> Baixar extrato (PDF)</Button>
+            </div>
+          </div>
+          <div className="h-48 flex items-center">
+            {byCategory.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem recebimentos confirmados ainda para montar o gráfico.</p>
+            ) : (
+              <div className="flex items-center gap-4 w-full">
+                <div className="w-32 h-32 shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={32} outerRadius={60} paddingAngle={2}>
+                        {byCategory.map((c) => <Cell key={c.name} fill={c.color} />)}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => brl(v)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="space-y-1.5 min-w-0">
+                  {byCategory.map((c) => (
+                    <div key={c.name} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c.color }} />
+                      <span className="truncate">{c.name}</span>
+                      <span className="font-semibold text-foreground shrink-0">{brl(c.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
