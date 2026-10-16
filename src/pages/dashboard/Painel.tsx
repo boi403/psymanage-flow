@@ -1,4 +1,5 @@
-import { Calendar, Users, Wallet, TrendingUp, CheckCircle2 } from "lucide-react";
+import { Calendar, Users, Wallet, TrendingUp, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,13 @@ const Kpi = ({ icon: Icon, label, value, color }: any) => (
 export default function Painel() {
   const { user } = useAuth();
   const name = user?.user_metadata?.full_name?.split(" ")[0] ?? "Psicólogo(a)";
+
+  const { data: profile } = useQuery({
+    queryKey: ["painel-profile", user?.id],
+    enabled: !!user,
+    queryFn: async () => (await supabase.from("profiles").select("crp, specialty").eq("id", user!.id).maybeSingle()).data,
+  });
+  const profileIncomplete = profile && (!profile.crp || !profile.specialty);
 
   const { data } = useQuery({
     queryKey: ["painel-overview"],
@@ -69,6 +77,13 @@ export default function Painel() {
         <h1 className="text-2xl font-bold text-foreground">Olá, {name} 👋</h1>
         <p className="text-muted-foreground text-sm mt-1">Aqui está o resumo da sua clínica hoje.</p>
       </div>
+
+      {profileIncomplete && (
+        <Link to="/dashboard/configuracao" className="flex items-center gap-3 bg-accent/15 border border-accent text-accent-foreground rounded-xl p-4 text-sm hover:bg-accent/20 transition-colors">
+          <AlertTriangle className="w-5 h-5 shrink-0" />
+          <span>Complete seu CRP e especialidade em Configurações — comum para quem entrou com o Google, já que ele não informa esses dados. Alguns recursos (como o Receita Saúde) dependem disso.</span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi icon={Calendar} label="Sessões hoje" value={sessionsToday} color="bg-primary-light text-primary-dark" />
