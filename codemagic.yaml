@@ -16,6 +16,13 @@
 #   4. Add any Supabase/public env vars this build needs as Codemagic
 #      environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY,
 #      VITE_SUPABASE_PROJECT_ID -- same values as .env, which is gitignored).
+#   5. To test on your own iPhone without a Mac/usbmuxd: the ios-release
+#      workflow below auto-submits to TestFlight once an App Store Connect
+#      integration is connected (Codemagic UI -> Team settings -> Integrations
+#      -> App Store Connect, same API key as step 3). You also need to add
+#      yourself as an internal tester in App Store Connect, then install the
+#      TestFlight app on your iPhone and accept the invite -- no cable, no
+#      WSL, no usbmuxd needed.
 
 workflows:
   android-release:
@@ -87,3 +94,9 @@ workflows:
       email:
         recipients:
           - mateus.orezende@gmail.com
+      # Requires the App Store Connect integration (see note 5 above) to be
+      # connected in the Codemagic dashboard; without it this step is simply
+      # skipped rather than failing the build.
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
