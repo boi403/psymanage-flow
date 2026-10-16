@@ -23,6 +23,14 @@ export default function SessionRecordings({ sessionId, sessionDate }: { sessionI
     if (error) throw error; return data;
   }});
   const active: any = recordings.find(r => r.id === selected) ?? recordings[0];
+  const { data: reportMeta } = useQuery({ queryKey: ['session-report-meta', sessionId], queryFn: async () => {
+    const [{ data: session }, { data: { user } }] = await Promise.all([
+      supabase.from('sessions').select('patients(name)').eq('id', sessionId).maybeSingle(),
+      supabase.auth.getUser(),
+    ]);
+    const { data: profile } = user ? await supabase.from('profiles').select('full_name,crp,city').eq('id', user.id).maybeSingle() : { data: null };
+    return { patientName: (session as any)?.patients?.name, professionalName: profile?.full_name, crp: profile?.crp, city: profile?.city };
+  }});
   const markReviewed = useMutation({
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser(); if (!user) throw new Error('Entre novamente.');
@@ -35,7 +43,7 @@ export default function SessionRecordings({ sessionId, sessionDate }: { sessionI
   function exportReport(format: 'pdf' | 'csv') {
     if (!isClinicalReport(active.report)) return;
     if (!active.reviewed_at && !window.confirm('Este relatório ainda não foi revisado por um profissional. Exportar mesmo assim?')) return;
-    exportClinicalReport(active.report, format, dateTimeBR(sessionDate));
+    exportClinicalReport(active.report, format, dateTimeBR(sessionDate), reportMeta);
   }
   async function upload(file?: File) {
     if (!file) return;

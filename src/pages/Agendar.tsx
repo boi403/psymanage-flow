@@ -96,6 +96,7 @@ export default function Agendar() {
               <div><dt className="text-sm text-muted-foreground">Consulta</dt><dd>{done.modality === "online" ? "Online" : "Presencial"} · {done.duration_min} minutos</dd></div>
             </dl>
             <p className="text-sm text-muted-foreground">Horário local: {Intl.DateTimeFormat().resolvedOptions().timeZone}. Para alterações, entre em contato com o profissional.</p>
+            <p className="text-sm text-muted-foreground">Você receberá um e-mail de confirmação com o link da videochamada assim que ele estiver disponível. Caso não receba, entre em contato com o profissional.</p>
           </section>
         ) : !slots.length ? (
           <section className="border-t border-border py-8 space-y-3"><CalendarDays className="h-8 w-8 text-primary" /><h2 className="text-xl font-semibold">Nenhum horário disponível</h2><p className="text-muted-foreground">Entre em contato com o profissional para consultar novas datas.</p><Button variant="outline" onClick={() => availability.refetch()}>Atualizar horários</Button></section>

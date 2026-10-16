@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Copy } from "lucide-react";
+import { ArrowLeft, Copy, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,7 +23,9 @@ export default function SalaVirtual() {
   if (error) return <p className="text-destructive">Erro ao carregar a sala. Tente novamente.</p>;
   if (!s) return <p className="text-muted-foreground">Sessão não encontrada.</p>;
   const room = `PsicoManager-${s.room_code}`;
-  const url = `https://meet.jit.si/${room}`;
+  const jitsiUrl = `https://meet.jit.si/${room}`;
+  const meetUrl: string | undefined = (s as any).meet_url || undefined;
+  const url = meetUrl || jitsiUrl;
 
   return (
     <div className="space-y-4">
@@ -46,9 +48,22 @@ export default function SalaVirtual() {
           <Copy className="w-4 h-4 mr-2" /> Copiar link do paciente
         </Button>
       </div>
-      <div className="rounded-2xl overflow-hidden border border-border bg-card" style={{ height: "75vh" }}>
-        <iframe title="Sala virtual" src={url} allow="camera; microphone; fullscreen; display-capture; autoplay" className="w-full h-full border-0" />
-      </div>
+      {meetUrl ? (
+        <div className="rounded-2xl border border-border bg-card p-8 flex flex-col items-center justify-center gap-4 text-center" style={{ minHeight: "50vh" }}>
+          <Video className="w-10 h-10 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Esta consulta usa o Google Meet</h2>
+          <p className="text-sm text-muted-foreground max-w-md">O Google Meet não pode ser incorporado nesta página. Clique no botão abaixo para entrar na chamada em uma nova aba.</p>
+          <Button size="lg" asChild>
+            <a href={meetUrl} target="_blank" rel="noopener noreferrer">
+              <Video className="w-4 h-4 mr-2" /> Entrar no Google Meet
+            </a>
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-2xl overflow-hidden border border-border bg-card" style={{ height: "75vh" }}>
+          <iframe title="Sala virtual" src={jitsiUrl} allow="camera; microphone; fullscreen; display-capture; autoplay" className="w-full h-full border-0" />
+        </div>
+      )}
       <SessionRecordings sessionId={s.id} sessionDate={s.starts_at} />
     </div>
   );
