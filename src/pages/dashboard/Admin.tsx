@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +9,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { brl, dateBR } from "@/lib/format";
 
 const STATUS = ["trial", "ativa", "pendente", "cancelada"];
+type PendingCourse = { id: string; instructor_id: string; title: string; description: string; hours: number | null; level: string; status: string };
 
 export default function Admin() {
   const { isAdmin, loading } = useIsAdmin();
@@ -30,6 +32,23 @@ export default function Admin() {
   const update = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => { await supabase.from("subscriptions").update({ status }).eq("id", id); },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-data"] }),
+  });
+
+  const { data: pendingCourses = [] } = useQuery({
+    queryKey: ["admin-pending-courses"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("courses" as any).select("*").eq("status", "pendente").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as unknown as PendingCourse[];
+    },
+  });
+  const reviewCourse = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "aprovado" | "rejeitado" }) => {
+      const { error } = await supabase.from("courses" as any).update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-pending-courses"] }),
   });
 
   if (loading) return null;
@@ -94,6 +113,27 @@ export default function Admin() {
             <span className="text-muted-foreground">{p.specialty} · desde {dateBR(p.created_at)}</span>
           </div>
         ))}
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl">
+        <h2 className="font-bold p-4 border-b border-border text-foreground">Cursos pendentes de aprovação</h2>
+        {pendingCourses.length === 0 && <p className="p-6 text-center text-muted-foreground text-sm">Nenhum curso pendente.</p>}
+        {pendingCourses.map((c) => {
+          const instructor = prof(c.instructor_id);
+          return (
+            <div key={c.id} className="flex items-center justify-between gap-4 p-4 border-b border-border last:border-0 flex-wrap">
+              <div>
+                <p className="font-semibold text-foreground">{c.title} <span className="font-normal text-xs text-muted-foreground">({c.level}{c.hours != null && ` · ${c.hours}h`})</span></p>
+                <p className="text-xs text-muted-foreground">Instrutor: {instructor?.full_name ?? c.instructor_id}</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-xl">{c.description}</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button size="sm" disabled={reviewCourse.isPending} onClick={() => reviewCourse.mutate({ id: c.id, status: "aprovado" })} className="gradient-primary text-primary-foreground">Aprovar</Button>
+                <Button size="sm" variant="outline" disabled={reviewCourse.isPending} onClick={() => reviewCourse.mutate({ id: c.id, status: "rejeitado" })}>Rejeitar</Button>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Calendar, Wallet, BarChart3, Megaphone, Settings, Building2, LogOut, CreditCard, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Wallet, BarChart3, Megaphone, Settings, Building2, LogOut, CreditCard, ShieldCheck, GraduationCap } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -15,6 +15,7 @@ const items = [
   { title: "Configuração", url: "/dashboard/configuracao", icon: Settings },
   { title: "Minha clínica", url: "/dashboard/clinica", icon: Building2 },
   { title: "Meu plano", url: "/dashboard/planos", icon: CreditCard },
+  { title: "Cursos", url: "/dashboard/cursos", icon: GraduationCap },
 ];
 
 export function AppSidebar() {

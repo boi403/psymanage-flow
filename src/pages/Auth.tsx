@@ -18,9 +18,14 @@ const Auth = () => {
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   // Carried from PricingSection.tsx ("Começar grátis"/"Começar 15 dias grátis")
-  // so picking a plan before logging in still lands the person on it after.
+  // or SpecializationsSection.tsx ("Entrar na lista de espera") so picking a
+  // plan/course before logging in still lands the person on it after.
   const plano = params.get("plano");
-  const destination = plano ? `/dashboard/planos?plan=${encodeURIComponent(plano)}` : "/dashboard";
+  const curso = params.get("curso");
+  const destination = plano ? `/dashboard/planos?plan=${encodeURIComponent(plano)}`
+    : curso ? `/dashboard/cursos?curso=${encodeURIComponent(curso)}`
+    : "/dashboard";
+  const planoOrCursoQS = plano ? `?plano=${encodeURIComponent(plano)}` : curso ? `?curso=${encodeURIComponent(curso)}` : "";
 
   // login
   const [loginEmail, setLoginEmail] = useState("");
@@ -55,9 +60,9 @@ const Auth = () => {
       email: signupEmail,
       password: signupPassword,
       options: {
-        // Carries the plan choice through e-mail confirmation too, not just
-        // the immediate-login path below.
-        emailRedirectTo: `${window.location.origin}/auth${plano ? `?plano=${encodeURIComponent(plano)}` : ""}`,
+        // Carries the plan/course choice through e-mail confirmation too, not
+        // just the immediate-login path below.
+        emailRedirectTo: `${window.location.origin}/auth${planoOrCursoQS}`,
         data: { full_name: name, crp, specialty, phone, invite_code: invite.trim() },
       },
     });

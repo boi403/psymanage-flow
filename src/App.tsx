@@ -25,6 +25,7 @@ import Privacidade from "./pages/Privacidade";
 import SalaVirtual from "./pages/dashboard/SalaVirtual";
 import Planos from "./pages/dashboard/Planos";
 import Admin from "./pages/dashboard/Admin";
+import Cursos from "./pages/dashboard/Cursos";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const Routed = () => {
         <Route path="configuracao" element={<Configuracao />} />
         <Route path="clinica" element={<MinhaClinica />} />
         <Route path="planos" element={<Planos />} />
+        <Route path="cursos" element={<Cursos />} />
         <Route path="admin" element={<Admin />} />
       </Route>
       <Route path="*" element={<NotFound />} />
