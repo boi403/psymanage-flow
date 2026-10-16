@@ -55,7 +55,6 @@ workflows:
     environment:
       node: 20
       xcode: latest
-      cocoapods: default
       vars:
         VITE_SUPABASE_URL: $VITE_SUPABASE_URL
         VITE_SUPABASE_PUBLISHABLE_KEY: $VITE_SUPABASE_PUBLISHABLE_KEY
@@ -70,17 +69,17 @@ workflows:
         script: npm run build
       - name: Sync Capacitor
         script: npx cap sync ios
-      - name: Install CocoaPods dependencies
-        script: |
-          cd ios/App
-          pod install
+      # This project has no Podfile (Capacitor 8.x defaults to Swift Package
+      # Manager, see ios/App/CapApp-SPM/Package.swift) -- no `pod install`
+      # step, and build against the .xcodeproj directly, not a CocoaPods
+      # .xcworkspace (none exists).
       - name: Set up code signing
         script: |
           xcode-project use-profiles
       - name: Build .ipa
         script: |
           xcode-project build-ipa \
-            --workspace "ios/App/App.xcworkspace" \
+            --project "ios/App/App.xcodeproj" \
             --scheme "App"
     artifacts:
       - build/ios/ipa/*.ipa
