@@ -31,14 +31,39 @@ export function rowIssues(r: ReceitaRow): string[] {
   return issues;
 }
 
-/** Official income import, 13 fields. Receipt generation adds 3 fields. */
-export function buildCarneLeaoCSV(rows: ReceitaRow[]): string {
+/**
+ * Receita Saúde receipt layout (16 fields) from the official Carnê-Leão
+ * manual: https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/pagamento/carne-leao/manual/formato-arquivo
+ * This is NOT the generic 13-field income-import layout -- without fields
+ * 14-16 (receipt flag "S", the professional's own CPF, and their council
+ * registration), Receita Federal just logs plain income and never issues
+ * the official digital receipt patients need, defeating the point of this
+ * feature. "255" (field 3, occupation code) is fixed to Psicólogo per that
+ * table.
+ */
+export function buildCarneLeaoCSV(rows: ReceitaRow[], professionalCpf: string, professionalCrp: string): string {
+  const proCpf = onlyDigits(professionalCpf);
   const lines = rows.map((r) => {
     const [y, m, d] = r.date.split("-");
     const hist = r.description.replace(/[;\r\n]/g, " ").slice(0, 255);
-    return [`${d}/${m}/${y}`, "R01.001.001", "255", r.amount.toFixed(2).replace(".", ","), "", hist, "PF", onlyDigits(r.payerCpf), onlyDigits(r.beneficiaryCpf), "", "", "N", ""].join(";");
+    return [
+      `${d}/${m}/${y}`, "R01.001.001", "255", r.amount.toFixed(2).replace(".", ","), "", hist, "PF",
+      onlyDigits(r.payerCpf), onlyDigits(r.beneficiaryCpf),
+      "", "", "", "", // 10 CPF-not-provided, 11 CNPJ, 12 IRRF indicator, 13 IRRF amount -- always blank for Receita Saúde
+      "S", // 14: tells Receita Federal to generate the official receipt
+      proCpf, // 15: professional's own CPF, must match their Carnê-Leão login
+      professionalCrp.trim(), // 16: council registration printed on the receipt
+    ].join(";");
   });
   return lines.join("\r\n") + "\r\n";
+}
+
+/** Preconditions for the whole export, not per-row (same professional for every line). */
+export function professionalIssues(cpf: string | null | undefined, crp: string | null | undefined): string[] {
+  const issues: string[] = [];
+  if (!isValidCPF(cpf)) issues.push("Cadastre seu CPF (Configuração) para gerar recibos do Receita Saúde");
+  if (!crp?.trim()) issues.push("Cadastre seu CRP (Configuração) para gerar recibos do Receita Saúde");
+  return issues;
 }
 
 /** Encode text as ISO-8859-1 bytes (unsupported chars become "?"). */
