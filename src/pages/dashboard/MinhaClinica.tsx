@@ -1,17 +1,35 @@
 import { Edit, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export default function MinhaClinica() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwForm, setPwForm] = useState({ password: "", confirm: "" });
 
   useEffect(() => {
     if (!user) return;
     supabase.from("profiles").select("*").eq("id", user.id).maybeSingle().then(({ data }) => setProfile(data));
   }, [user]);
+
+  const changePassword = useMutation({
+    mutationFn: async () => {
+      if (pwForm.password.length < 6) throw new Error("A senha precisa ter pelo menos 6 caracteres");
+      if (pwForm.password !== pwForm.confirm) throw new Error("As senhas não coincidem");
+      const { error } = await supabase.auth.updateUser({ password: pwForm.password });
+      if (error) throw error;
+    },
+    onSuccess: () => { setPwOpen(false); setPwForm({ password: "", confirm: "" }); toast.success("Senha alterada com sucesso"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const initials = (profile?.full_name ?? user?.email ?? "U").split(" ").map((x: string) => x[0]).join("").slice(0, 2).toUpperCase();
 
@@ -80,7 +98,7 @@ export default function MinhaClinica() {
               <p className="font-medium text-foreground">{user?.created_at ? new Date(user.created_at).toLocaleDateString("pt-BR") : "—"}</p>
             </div>
           </div>
-          <Button variant="outline" className="w-full mt-5"><Lock className="w-4 h-4 mr-2" /> Alterar senha</Button>
+          <Button variant="outline" className="w-full mt-5" onClick={() => setPwOpen(true)}><Lock className="w-4 h-4 mr-2" /> Alterar senha</Button>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
@@ -93,6 +111,19 @@ export default function MinhaClinica() {
           <Button className="w-full gradient-primary text-primary-foreground">Assinar PsicoManager agora</Button>
         </div>
       </div>
+
+      <Dialog open={pwOpen} onOpenChange={setPwOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Alterar senha</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nova senha</Label><Input type="password" value={pwForm.password} onChange={(e) => setPwForm({ ...pwForm, password: e.target.value })} /></div>
+            <div><Label>Confirmar nova senha</Label><Input type="password" value={pwForm.confirm} onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button disabled={!pwForm.password || !pwForm.confirm || changePassword.isPending} onClick={() => changePassword.mutate()} className="gradient-primary text-primary-foreground">Salvar nova senha</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
