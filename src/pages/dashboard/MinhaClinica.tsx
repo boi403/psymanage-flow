@@ -1,24 +1,59 @@
 import { Edit, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { brl, dateBR } from "@/lib/format";
 
 export default function MinhaClinica() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [pwOpen, setPwOpen] = useState(false);
   const [pwForm, setPwForm] = useState({ password: "", confirm: "" });
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ full_name: "", phone: "", crp: "", specialty: "", city: "" });
 
   useEffect(() => {
     if (!user) return;
     supabase.from("profiles").select("*").eq("id", user.id).maybeSingle().then(({ data }) => setProfile(data));
   }, [user]);
+
+  const openEdit = () => {
+    setEditForm({
+      full_name: profile?.full_name ?? "",
+      phone: profile?.phone ?? "",
+      crp: profile?.crp ?? "",
+      specialty: profile?.specialty ?? "",
+      city: profile?.city ?? "",
+    });
+    setEditOpen(true);
+  };
+
+  const saveProfile = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("profiles").update(editForm).eq("id", user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setProfile((p: any) => ({ ...p, ...editForm }));
+      setEditOpen(false);
+      toast.success("Perfil atualizado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const { data: subscription } = useQuery({
+    queryKey: ["minha-clinica-subscription", user?.id],
+    enabled: !!user,
+    queryFn: async () =>
+      (await supabase.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle()).data,
+  });
 
   const changePassword = useMutation({
     mutationFn: async () => {
@@ -58,7 +93,7 @@ export default function MinhaClinica() {
               <p className="font-medium text-foreground">{profile?.specialty || "—"}</p>
             </div>
           </div>
-          <Button className="w-full gradient-primary text-primary-foreground"><Edit className="w-4 h-4 mr-2" /> Editar</Button>
+          <Button onClick={openEdit} className="w-full gradient-primary text-primary-foreground"><Edit className="w-4 h-4 mr-2" /> Editar</Button>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
@@ -68,14 +103,8 @@ export default function MinhaClinica() {
           </p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {[
-              ["Tipo de Pessoa", "Pessoa Jurídica"],
-              ["CNPJ", "—"],
-              ["Endereço", "—"],
-              ["Número", "—"],
-              ["Bairro", "—"],
-              ["CEP", "—"],
-              ["Cidade", "—"],
-              ["UF", "—"],
+              ["Tipo de Pessoa", "Pessoa Física"],
+              ["Cidade", profile?.city || "—"],
             ].map(([l, v]) => (
               <div key={l}>
                 <p className="text-xs uppercase text-muted-foreground font-semibold">{l}</p>
@@ -83,7 +112,11 @@ export default function MinhaClinica() {
               </div>
             ))}
           </div>
-          <Button className="w-full mt-5 gradient-primary text-primary-foreground"><Edit className="w-4 h-4 mr-2" /> Editar</Button>
+          <p className="text-xs text-muted-foreground mt-4">
+            CNPJ e endereço comercial completo ainda não são suportados — essas colunas não existem no banco de dados atual.
+            Avise se precisar emitir notas fiscais como Pessoa Jurídica para eu criar a migration correspondente.
+          </p>
+          <Button onClick={openEdit} className="w-full mt-5 gradient-primary text-primary-foreground"><Edit className="w-4 h-4 mr-2" /> Editar cidade</Button>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
@@ -105,12 +138,36 @@ export default function MinhaClinica() {
           <h3 className="font-bold text-foreground mb-5">💎 Meu plano</h3>
           <div className="gradient-primary rounded-xl p-5 text-primary-foreground mb-4">
             <p className="text-xs uppercase font-bold opacity-80">Plano atual</p>
-            <p className="text-2xl font-bold mt-1">Free Trial</p>
-            <p className="text-sm opacity-90 mt-1">14 dias restantes</p>
+            <p className="text-2xl font-bold mt-1">{subscription?.plan ?? "Nenhum plano"}</p>
+            <p className="text-sm opacity-90 mt-1">
+              {subscription
+                ? subscription.status === "trial" && subscription.trial_ends_at
+                  ? `Período de teste até ${dateBR(subscription.trial_ends_at)}`
+                  : `${brl(subscription.price)}/mês · status ${subscription.status}`
+                : "Escolha um plano para começar"}
+            </p>
           </div>
-          <Button className="w-full gradient-primary text-primary-foreground">Assinar PsicoManager agora</Button>
+          <Button asChild className="w-full gradient-primary text-primary-foreground">
+            <Link to="/dashboard/planos">{subscription ? "Gerenciar plano" : "Assinar PsicoManager agora"}</Link>
+          </Button>
         </div>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar perfil</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nome completo</Label><Input value={editForm.full_name} onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })} /></div>
+            <div><Label>Telefone</Label><Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} /></div>
+            <div><Label>CRP</Label><Input value={editForm.crp} onChange={(e) => setEditForm({ ...editForm, crp: e.target.value })} /></div>
+            <div><Label>Especialidade</Label><Input value={editForm.specialty} onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })} /></div>
+            <div><Label>Cidade</Label><Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button disabled={saveProfile.isPending} onClick={() => saveProfile.mutate()} className="gradient-primary text-primary-foreground">Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={pwOpen} onOpenChange={setPwOpen}>
         <DialogContent>

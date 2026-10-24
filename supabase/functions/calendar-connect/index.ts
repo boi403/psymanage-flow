@@ -3,6 +3,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
 import { admin, gateway, checked, encrypt, decrypt, scopes, syncUser } from '../_shared/calendar-connector.ts';
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
+// Not security-critical (internal cron caller, not user-facing), but cheap to
+// make constant-time rather than leave a `!==` byte-length/content timing leak on a secret.
+function timingSafeEqual(a:string,b:string){const ea=new TextEncoder().encode(a),eb=new TextEncoder().encode(b);if(ea.length!==eb.length)return false;let diff=0;for(let i=0;i<ea.length;i++)diff|=ea[i]^eb[i];return diff===0;}
 Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders});
  if(req.method!=='POST')return json({error:'Método não permitido'},405);
@@ -13,7 +16,7 @@ Deno.serve(async req=>{
   const db=admin();const {action}=input.data;
   if(action==='worker'){
    const {data}=await db.from('calendar_worker_secret').select('secret').eq('id',1).maybeSingle();
-   if(!data||req.headers.get('X-Calendar-Worker')!==data.secret)return json({error:'Não autorizado'},401);
+   if(!data||!timingSafeEqual(req.headers.get('X-Calendar-Worker')??'',data.secret))return json({error:'Não autorizado'},401);
    // A single row change only needs its own user resynced; a bare {action:'worker'}
    // (e.g. a future cron tick with no specific trigger) still does the full scan.
    if(input.data.user_id){try{await syncUser(input.data.user_id);}catch(e){console.error('Calendar sync failed',e);}return json({ok:true});}

@@ -96,7 +96,7 @@ export default function Painel() {
         <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-bold text-foreground">Próximas sessões</h2>
-            <button className="text-xs text-primary font-semibold hover:underline">Ver agenda</button>
+            <Link to="/dashboard/agenda" className="text-xs text-primary font-semibold hover:underline">Ver agenda</Link>
           </div>
           <div className="space-y-3">
             {upcoming.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma sessão agendada.</p>}

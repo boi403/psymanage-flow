@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Video, MapPin, Trash2, MessageCircle } from "lucide-react";
+import { Plus, Video, MapPin, Trash2, MessageCircle, FileText, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +31,10 @@ export default function Agenda() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ patient_id: "", starts_at: "", duration_min: "50", modality: "online", price: "" });
+  const [notesSession, setNotesSession] = useState<any>(null);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [rescheduleSession, setRescheduleSession] = useState<any>(null);
+  const [rescheduleAt, setRescheduleAt] = useState("");
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id], enabled: !!user,
@@ -78,6 +83,30 @@ export default function Agenda() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const saveNotes = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("sessions").update({ notes: notesDraft }).eq("id", notesSession.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sessions"] }); setNotesSession(null); toast.success("Notas salvas"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reschedule = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("sessions").update({ starts_at: new Date(rescheduleAt).toISOString() }).eq("id", rescheduleSession.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sessions"] }); setRescheduleSession(null); toast.success("Sessão reagendada"); syncCal(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toLocalInput = (iso: string) => {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const syncCal = () => calendarAction({ action: "sync" }).catch(() => {});
   const now = Date.now();
   const upcoming = sessions.filter((s) => new Date(s.starts_at).getTime() >= now - 3600_000);
@@ -102,6 +131,20 @@ export default function Agenda() {
       {s.status === "Agendada" && s.patients?.phone && (
         <Button asChild size="sm" variant="outline" title="Lembrete WhatsApp">
           <a target="_blank" rel="noreferrer" href={waLink(s, proName)}><MessageCircle className="w-4 h-4 mr-1" /> Lembrete</a>
+        </Button>
+      )}
+      <Button
+        size="sm" variant="outline" title="Notas da sessão"
+        onClick={() => { setNotesSession(s); setNotesDraft(s.notes ?? ""); }}
+      >
+        <FileText className="w-4 h-4 mr-1" /> Notas
+      </Button>
+      {s.status === "Agendada" && (
+        <Button
+          size="sm" variant="outline" title="Reagendar sessão"
+          onClick={() => { setRescheduleSession(s); setRescheduleAt(toLocalInput(s.starts_at)); }}
+        >
+          <CalendarClock className="w-4 h-4 mr-1" /> Reagendar
         </Button>
       )}
       <Button asChild size="sm" className="gradient-primary text-primary-foreground">
@@ -161,6 +204,25 @@ export default function Agenda() {
             </div>
           </div>
           <DialogFooter><Button disabled={!form.patient_id || !form.starts_at || create.isPending} onClick={() => create.mutate()} className="gradient-primary text-primary-foreground">Agendar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!notesSession} onOpenChange={(v) => !v && setNotesSession(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Notas da sessão — {notesSession?.patients?.name}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Visíveis apenas para você. Podem ser usadas como base para o relatório de IA da sessão.
+          </p>
+          <Textarea rows={8} value={notesDraft} onChange={(e) => setNotesDraft(e.target.value)} placeholder="Observações clínicas, evolução, pontos a retomar na próxima sessão..." />
+          <DialogFooter><Button disabled={saveNotes.isPending} onClick={() => saveNotes.mutate()} className="gradient-primary text-primary-foreground">Salvar notas</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!rescheduleSession} onOpenChange={(v) => !v && setRescheduleSession(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Reagendar sessão — {rescheduleSession?.patients?.name}</DialogTitle></DialogHeader>
+          <div><Label>Nova data e hora</Label><Input type="datetime-local" value={rescheduleAt} onChange={(e) => setRescheduleAt(e.target.value)} /></div>
+          <DialogFooter><Button disabled={!rescheduleAt || reschedule.isPending} onClick={() => reschedule.mutate()} className="gradient-primary text-primary-foreground">Confirmar reagendamento</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -123,6 +123,7 @@ export default function SessionRecordings({ sessionId, sessionDate }: { sessionI
           <Button variant="outline" size="sm" onClick={() => exportReport('csv')}><FileDown className="mr-2 h-4 w-4" />CSV</Button>
         </div>
       </div>
+      {!active.reviewed_at && <p className="text-xs text-muted-foreground">A remoção automática de dados identificáveis antes do envio à IA é best-effort: erros de transcrição, apelidos ou menções a terceiros podem não ser capturados. Revise o conteúdo abaixo antes de aprovar ou salvar.</p>}
       {REPORT_SECTIONS.map(([field, label]) => <div key={field}><h4 className="text-sm font-semibold text-foreground mb-1">{label}</h4><p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">{isClinicalReport(active.report) ? active.report[field] : ''}</p></div>)}
       <div className="border-t border-border pt-4 space-y-2">
         <Button variant="outline" size="sm" onClick={() => setShowTranscript(v => !v)}>{showTranscript ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}{showTranscript ? 'Ocultar transcrição da sessão' : 'Revelar transcrição da sessão'}</Button>
